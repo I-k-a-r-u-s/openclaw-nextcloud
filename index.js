@@ -2117,6 +2117,10 @@ async function main() {
         const tokenIndex = args.indexOf("--token");
         if (tokenIndex === -1) throw new Error("Missing --token");
         output(await Talk.deleteConversation(args[tokenIndex + 1]));
+      } else if (subCommand === "get") {
+        const tokenIndex = args.indexOf("--token");
+        if (tokenIndex === -1) throw new Error("Missing --token");
+        output(await Talk.getConversation(args[tokenIndex + 1]));
       } else if (subCommand === "messages") {
         const tokenIndex = args.indexOf("--token");
         if (tokenIndex === -1) throw new Error("Missing --token");
