@@ -165,11 +165,13 @@ File listings and search results include a `fileId` (when the server returns one
 ### Chat/Conversations (Talk API)
 - `talk list` - List all conversations
 - `talk create --name <n> [--type group|public] [--description <d>] [--password <pw>]` - Create new conversation
+- `talk get --token <t>` - Get conversation details
 - `talk delete --token <t>` - Delete conversation
 - `talk messages --token <t> [--limit <n>] [--look-into-future <0|1>]` - List messages
 - `talk send --token <t> --message <m> [--reply-to <id>]` - Send message
 - `talk delete-message --token <t> --message-id <id>` - Delete message
 - `talk edit-message --token <t> --message-id <id> --message <m>` - Edit message
+- `talk add-participant --token <t> --user <u> [--source <users|groups|circles>]` - Add participant to conversation
 - `talk list-bots [--token <t>]` - List bots (server or room-specific)
 - `talk enable-bot --token <t> --bot-id <id>` - Enable bot in conversation
 - `talk disable-bot --token <t> --bot-id <id>` - Disable bot in conversation
@@ -415,6 +417,7 @@ When creating contacts, if the user does not specify an address book:
 
 ### Memory Keys
 - `default_addressbook`: Default address book name for contacts
+- `talk_default_bot`: Default bot ID for auto-enable
 
 ## Agent Behavior: Bot Auto-Enable in Conversations
 
@@ -432,7 +435,18 @@ When creating new conversations, if a bot is configured:
 ### Memory Keys
 - `default_bot_enabled_rooms`: Array of room tokens where bot is enabled
 
-## Agent Behavior: Presenting Information
+## Agent Behavior: Participant Management
+
+When managing participants in a conversation:
+
+1. **Adding users**: Use `talk add-participant --token <t> --user <username>`
+2. **Add multiple users**: Call the command for each user
+3. **User source**: Default is `users`, but can specify `groups` or `circles`
+
+Example:
+```
+node scripts/nextcloud.js talk add-participant --token ROOM_TOKEN --user Username
+```
 
 When displaying data to the user, format it in a readable way. Output may be sent to messaging platforms (Telegram, WhatsApp, etc.) where markdown does not render, so avoid markdown formatting.
 
