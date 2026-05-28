@@ -1,6 +1,6 @@
 ---
 name: openclaw-nextcloud
-description: Manage Notes, Tasks, Calendar, Files, and Contacts in your Nextcloud instance via CalDAV, WebDAV, and Notes API. Use for creating notes, managing todos and calendar events, uploading/downloading files, and managing contacts.
+description: Manage Notes, Tasks, Calendar, Files, Contacts, and Chat/Conversations in your Nextcloud instance via CalDAV, WebDAV, Notes API, and Talk API. Use for creating notes, managing todos and calendar events, uploading/downloading files, managing contacts, and participating in chat conversations with bot integration.
 compatibility: Requires Node.js 20+ and a Nextcloud app password (NEXTCLOUD_TOKEN) granting full account-scope access. Reads NEXTCLOUD_URL, NEXTCLOUD_USER, NEXTCLOUD_TOKEN. HTTPS-only egress to NEXTCLOUD_URL. Performs destructive, non-transactional writes (delete/edit/share); see Safety section in body.
 allowed-tools: Bash Read
 metadata:
@@ -28,7 +28,7 @@ metadata:
   credential-scope: nextcloud-account-full
   network-egress: ${NEXTCLOUD_URL}
   has-destructive-operations: "true"
-  destructive-operations: notes:delete,files:delete,files:upload,tasks:delete,calendar:delete,contacts:delete,shares:create-link,shares:delete
+  destructive-operations: notes:delete,files:delete,files:upload,tasks:delete,calendar:delete,contacts:delete,talk:delete,talk:delete-message,shares:create-link,shares:delete
 ---
 
 # OpenClaw Nextcloud Skill
@@ -162,6 +162,51 @@ File listings and search results include a `fileId` (when the server returns one
 ### Address Books (list available address books)
 - `addressbooks list`
 
+### Chat/Conversations (Talk API)
+- `talk list` - List all conversations
+- `talk create --name <n> [--type group|public] [--description <d>] [--password <pw>]` - Create new conversation
+- `talk delete --token <t>` - Delete conversation
+- `talk messages --token <t> [--limit <n>] [--look-into-future <0|1>]` - List messages
+- `talk send --token <t> --message <m> [--reply-to <id>]` - Send message
+- `talk delete-message --token <t> --message-id <id>` - Delete message
+- `talk edit-message --token <t> --message-id <id> --message <m>` - Edit message
+- `talk list-bots [--token <t>]` - List bots (server or room-specific)
+- `talk enable-bot --token <t> --bot-id <id>` - Enable bot in conversation
+- `talk disable-bot --token <t> --bot-id <id>` - Disable bot in conversation
+
+### Nextcloud Bot Configuration
+
+This skill integrates with Nextcloud Talk and can work with an existing bot installed on the server. To use the bot functionality:
+
+1. **Bot Installation** (requires admin access to Nextcloud server via OCC command):
+   ```bash
+   ./occ talk:bot:install \
+     --feature webhook --feature response \
+     "OpenClaw Bot" "shared-secret-123" \
+     "https://your-webhook-endpoint.com/nextcloud" \
+     "Bot for OpenClaw AI assistant"
+   ```
+
+2. **Environment Variables** - Add the following bot-specific variables:
+   ```
+   NEXTCLOUD_BOT_ID=5          # Bot ID from server (get via talk list-bots)
+   NEXTCLOUD_BOT_SECRET=...    # Shared secret from bot installation
+   ```
+
+3. **Enable Bot in Rooms**: The skill can automatically enable the bot in new rooms:
+   ```bash
+   node scripts/nextcloud.js talk enable-bot --token ROOM_TOKEN --bot-id 5
+   ```
+
+### Bot Auto-Enable on Room Creation
+
+When creating new conversations, the skill can automatically enable the configured bot:
+```bash
+node scripts/nextcloud.js talk create --name "Project Alpha" --type public --enable-bot
+```
+
+This ensures the bot receives webhooks and can participate in the conversation.
+
 ### Calendar / Address Book Names
 
 `--calendar` and `--addressbook` accept any of: the exact display name, a
@@ -233,6 +278,56 @@ Date inputs (`--due`, `--start`, `--end`, `--from`, `--to`) accept either ISO 86
 - `shareType: 3` = public link
 - `permissions`: `1` for read-only, `15` for edit
 - `passwordProtected`: only set on `create-link`; reflects whether `--password` was supplied to that call
+
+### Chat/Conversations Output
+
+#### Conversation List Output
+```json
+{
+  "status": "success",
+  "data": [
+    {
+      "id": 42,
+      "token": "abc123",
+      "type": 2,
+      "name": "Project Team",
+      "displayName": "Project Team",
+      "participantType": 1,
+      "lastActivity": 1714137600,
+      "hasCall": false,
+      "lastMessage": {...},
+      "unreadMessages": 0,
+      "isFavorite": false,
+      "notificationLevel": 1,
+      "readOnly": 0,
+      "listable": 0
+    }
+  ]
+}
+```
+
+#### Message List Output
+```json
+{
+  "status": "success",
+  "data": [
+    {
+      "id": 1567,
+      "token": "abc123",
+      "actorType": "users",
+      "actorId": "john.doe",
+      "actorDisplayName": "John Doe",
+      "timestamp": 1714137600,
+      "systemMessage": "",
+      "messageType": "comment",
+      "message": "Hello team!",
+      "messageParameters": {},
+      "isReplyable": true,
+      "reactions": {"👍": 2, "🎉": 1}
+    }
+  ]
+}
+```
 
 ### Contacts List Output
 ```json
@@ -321,6 +416,22 @@ When creating contacts, if the user does not specify an address book:
 ### Memory Keys
 - `default_addressbook`: Default address book name for contacts
 
+## Agent Behavior: Bot Auto-Enable in Conversations
+
+When creating new conversations, if a bot is configured:
+
+1. **Bot auto-enable** (when `NEXTCLOUD_BOT_ID` is set):
+   - After creating a conversation, automatically enable the bot using `talk enable-bot`
+   - The bot will receive webhooks and can participate in chat
+
+2. **Agent should**:
+   - Check if `NEXTCLOUD_BOT_ID` is set
+   - If yes, automatically call `talk enable-bot` after `talk create`
+   - Report back: "✅ Bot enabled in room"
+
+### Memory Keys
+- `default_bot_enabled_rooms`: Array of room tokens where bot is enabled
+
 ## Agent Behavior: Presenting Information
 
 When displaying data to the user, format it in a readable way. Output may be sent to messaging platforms (Telegram, WhatsApp, etc.) where markdown does not render, so avoid markdown formatting.
@@ -335,6 +446,7 @@ When displaying data to the user, format it in a readable way. Output may be sen
 ### Emoji Reference
 Tasks: ✅ (completed), ⬜ (pending), 🔴 (high priority), 🟡 (medium), 🟢 (low)
 Calendar: 📅 (event), ⏰ (time), 📍 (location)
+Chat/Conversations: 💬 (message), 🏷️ (tag), 👥 (group), 🔧 (bot)
 Notes: 📝 (note), 📁 (category)
 Files: 📄 (file), 📂 (folder), 💾 (size)
 Contacts: 👤 (person), 📧 (email), 📱 (phone), 🏢 (organization)

@@ -13,6 +13,7 @@ A Node.js CLI tool for interacting with Nextcloud services including notes, file
 - **Calendar** - Manage calendar events via CalDAV
 - **Tasks** - Create and manage tasks/todos
 - **Contacts** - Full contact management via CardDAV
+- **Chat/Conversations** - Manage Talk conversations, send messages, and integrate with Nextcloud bots
 
 ## Prerequisites
 
@@ -194,6 +195,39 @@ node scripts/nextcloud.js contacts edit --uid contact-uid --email "newemail@exam
 node scripts/nextcloud.js contacts delete --uid contact-uid
 ```
 
+### Chat/Conversations (Talk API)
+
+```bash
+# List all conversations
+node scripts/nextcloud.js talk list
+
+# Create a new conversation
+node scripts/nextcloud.js talk create --name "Project Team" --type group
+
+# List messages in a conversation
+node scripts/nextcloud.js talk messages --token ABC123 --limit 50
+
+# Send a message
+node scripts/nextcloud.js talk send --token ABC123 --message "Hello team!"
+
+# Delete a message
+node scripts/nextcloud.js talk delete-message --token ABC123 --message-id 1567
+
+# List bots (all on server)
+node scripts/nextcloud.js talk list-bots
+
+# Enable a bot in a conversation
+node scripts/nextcloud.js talk enable-bot --token ABC123 --bot-id 5
+```
+
+**Bot Setup Required:** For bot features, install a bot on your Nextcloud server first:
+
+```bash
+./occ talk:bot:install --feature webhook --feature response "Bot Name" "shared-secret" "https://your-webhook.com" "Description"
+```
+
+See [TALK.md](TALK.md) for full documentation.
+
 ## Output Format
 
 All commands return JSON output:
@@ -225,6 +259,7 @@ This tool uses the following Nextcloud APIs:
 | Calendar/Tasks | CalDAV | `/remote.php/dav/calendars/` |
 | Contacts | CardDAV | `/remote.php/dav/addressbooks/` |
 | Shares | OCS | `/ocs/v2.php/apps/files_sharing/api/v1/shares` |
+| Talk | Talk API | `/ocs/v2.php/apps/spreed/api/` |
 
 ## Dependencies
 
