@@ -127,8 +127,17 @@ async function request(endpoint, options = {}) {
   try {
     const response = await fetch(url, { ...options, headers });
     if (!response.ok) {
-      const err = new Error(`HTTP ${response.status}: ${response.statusText}`);
+      let bodyText;
+      try {
+        bodyText = await response.text();
+      } catch {
+        bodyText = "(could not read response body)";
+      }
+      const err = new Error(
+        `HTTP ${response.status}: ${response.statusText}\nResponse: ${bodyText.substring(0, 500)}${bodyText.length > 500 ? "..." : ""}`,
+      );
       err.status = response.status;
+      err.responseBody = bodyText;
       throw err;
     }
 
@@ -162,16 +171,21 @@ function output(data) {
 }
 
 function errorOutput(message) {
-  console.error(
-    JSON.stringify(
-      {
-        status: "error",
-        message: message.stack || message,
-      },
-      null,
-      2,
-    ),
-  );
+  const errorObj = {
+    status: "error",
+    message: message.stack || message,
+  };
+
+  // Include response body if available (for HTTP errors)
+  if (message.responseBody) {
+    errorObj.responseBody = message.responseBody;
+  }
+
+  if (message.status) {
+    errorObj.httpStatus = message.status;
+  }
+
+  console.error(JSON.stringify(errorObj, null, 2));
   process.exit(1);
 }
 
@@ -1263,7 +1277,10 @@ const Talk = {
 
     const data = await request("/ocs/v2.php/apps/spreed/api/v4/room", {
       method: "POST",
-      headers: { Accept: "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
       body: JSON.stringify(payload),
     });
     return data.ocs.data;
@@ -1386,7 +1403,10 @@ const Talk = {
       `/ocs/v2.php/apps/spreed/api/v1/bot/${token}/${botId}`,
       {
         method: "POST",
-        headers: { Accept: "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
       },
     );
     return { token, botId, status: data.ocs.meta.status };
@@ -1400,6 +1420,41 @@ const Talk = {
       method: "DELETE",
     });
     return { token, botId, status: "disabled" };
+  },
+
+  async uploadFileToConversation(token, filePath, fileContent) {
+    if (!token) throw new Error("Conversation token is required.");
+    if (!filePath) throw new Error("File path is required.");
+    if (fileContent === undefined || fileContent === null) {
+      throw new Error("File content is required.");
+    }
+
+    // Upload file to the Talk folder in the user's files directory
+    // Files in Talk conversations are stored at: /remote.php/dav/files/{user}/Talk/
+    const encodedFilePath = encodeURIComponent(filePath);
+    const fileEndpoint = `/remote.php/dav/files/${CONFIG.user}/Talk/${encodedFilePath}`;
+
+    // PUT the file
+    const response = await request(fileEndpoint, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/octet-stream",
+      },
+      body: fileContent,
+    });
+
+    // Get the file ID from the response headers or by fetching file info
+    const fileId = response.fileId || "unknown";
+
+    return {
+      token,
+      filePath,
+      status: "uploaded",
+      etag: response.etag || "unknown",
+      fileId,
+      message:
+        "File uploaded to Talk folder. It should appear in the conversation.",
+    };
   },
 };
 
@@ -2266,6 +2321,21 @@ async function main() {
           await Talk.disableBotInConversation(
             args[tokenIndex + 1],
             parseInt(args[botIdIndex + 1], 10),
+          ),
+        );
+      } else if (subCommand === "upload-file") {
+        const tokenIndex = args.indexOf("--token");
+        if (tokenIndex === -1) throw new Error("Missing --token");
+        const fileIndex = args.indexOf("--file");
+        if (fileIndex === -1) throw new Error("Missing --file");
+        const contentIndex = args.indexOf("--content");
+        if (contentIndex === -1) throw new Error("Missing --content");
+
+        output(
+          await Talk.uploadFileToConversation(
+            args[tokenIndex + 1],
+            args[fileIndex + 1],
+            args[contentIndex + 1],
           ),
         );
       } else if (subCommand === "list-bots") {

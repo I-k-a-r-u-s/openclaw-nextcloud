@@ -17678,8 +17678,18 @@ async function request(endpoint, options = {}) {
   try {
     const response = await fetch(url, { ...options, headers });
     if (!response.ok) {
-      const err = new Error(`HTTP ${response.status}: ${response.statusText}`);
+      let bodyText;
+      try {
+        bodyText = await response.text();
+      } catch {
+        bodyText = "(could not read response body)";
+      }
+      const err = new Error(
+        `HTTP ${response.status}: ${response.statusText}
+Response: ${bodyText.substring(0, 500)}${bodyText.length > 500 ? "..." : ""}`
+      );
       err.status = response.status;
+      err.responseBody = bodyText;
       throw err;
     }
     const contentType = response.headers.get("content-type");
@@ -17710,16 +17720,17 @@ function output(data) {
   );
 }
 function errorOutput(message) {
-  console.error(
-    JSON.stringify(
-      {
-        status: "error",
-        message: message.stack || message
-      },
-      null,
-      2
-    )
-  );
+  const errorObj = {
+    status: "error",
+    message: message.stack || message
+  };
+  if (message.responseBody) {
+    errorObj.responseBody = message.responseBody;
+  }
+  if (message.status) {
+    errorObj.httpStatus = message.status;
+  }
+  console.error(JSON.stringify(errorObj, null, 2));
   process.exit(1);
 }
 function ensureArray(item) {
@@ -18612,7 +18623,10 @@ var Talk = {
     if (options.password) payload.password = options.password;
     const data = await request("/ocs/v2.php/apps/spreed/api/v4/room", {
       method: "POST",
-      headers: { Accept: "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json"
+      },
       body: JSON.stringify(payload)
     });
     return data.ocs.data;
@@ -18715,7 +18729,10 @@ var Talk = {
       `/ocs/v2.php/apps/spreed/api/v1/bot/${token}/${botId}`,
       {
         method: "POST",
-        headers: { Accept: "application/json" }
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json"
+        }
       }
     );
     return { token, botId, status: data.ocs.meta.status };
@@ -18727,6 +18744,31 @@ var Talk = {
       method: "DELETE"
     });
     return { token, botId, status: "disabled" };
+  },
+  async uploadFileToConversation(token, filePath, fileContent) {
+    if (!token) throw new Error("Conversation token is required.");
+    if (!filePath) throw new Error("File path is required.");
+    if (fileContent === void 0 || fileContent === null) {
+      throw new Error("File content is required.");
+    }
+    const encodedFilePath = encodeURIComponent(filePath);
+    const fileEndpoint = `/remote.php/dav/files/${CONFIG.user}/Talk/${encodedFilePath}`;
+    const response = await request(fileEndpoint, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/octet-stream"
+      },
+      body: fileContent
+    });
+    const fileId = response.fileId || "unknown";
+    return {
+      token,
+      filePath,
+      status: "uploaded",
+      etag: response.etag || "unknown",
+      fileId,
+      message: "File uploaded to Talk folder. It should appear in the conversation."
+    };
   }
 };
 var Contacts = {
@@ -19441,6 +19483,20 @@ async function main() {
           await Talk.disableBotInConversation(
             args[tokenIndex + 1],
             parseInt(args[botIdIndex + 1], 10)
+          )
+        );
+      } else if (subCommand === "upload-file") {
+        const tokenIndex = args.indexOf("--token");
+        if (tokenIndex === -1) throw new Error("Missing --token");
+        const fileIndex = args.indexOf("--file");
+        if (fileIndex === -1) throw new Error("Missing --file");
+        const contentIndex = args.indexOf("--content");
+        if (contentIndex === -1) throw new Error("Missing --content");
+        output(
+          await Talk.uploadFileToConversation(
+            args[tokenIndex + 1],
+            args[fileIndex + 1],
+            args[contentIndex + 1]
           )
         );
       } else if (subCommand === "list-bots") {
