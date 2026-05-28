@@ -13677,6 +13677,7 @@ var require_date_fns = __commonJS({
 });
 
 // index.js
+import fs from "node:fs";
 import process from "node:process";
 import { Buffer as Buffer2 } from "node:buffer";
 
@@ -17602,6 +17603,21 @@ var XMLParser = class {
 // index.js
 var import_date_fns = __toESM(require_date_fns(), 1);
 import crypto from "node:crypto";
+var envPath = ".env";
+if (fs.existsSync(envPath)) {
+  const envContent = fs.readFileSync(envPath, "utf-8");
+  for (const line of envContent.split("\n")) {
+    const trimmed = line.trim();
+    if (trimmed && !trimmed.startsWith("#") && trimmed.includes("=")) {
+      const idx = trimmed.indexOf("=");
+      const key = trimmed.substring(0, idx).trim();
+      const value = trimmed.substring(idx + 1).trim();
+      if (key && value) {
+        process.env[key] = value;
+      }
+    }
+  }
+}
 var CONFIG = {
   url: process.env.NEXTCLOUD_URL,
   user: process.env.NEXTCLOUD_USER,
@@ -17656,6 +17672,9 @@ async function request(endpoint, options = {}) {
     "User-Agent": "OpenClaw-Nextcloud-Skill",
     ...options.headers
   };
+  if (endpoint.startsWith("/ocs/") || endpoint.includes("/spreed/api/")) {
+    headers["OCS-APIRequest"] = "true";
+  }
   try {
     const response = await fetch(url, { ...options, headers });
     if (!response.ok) {
@@ -18629,7 +18648,10 @@ var Talk = {
     if (replyTo) payload.replyTo = replyTo;
     const data = await request(`/ocs/v2.php/apps/spreed/api/v1/chat/${token}`, {
       method: "POST",
-      headers: { Accept: "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json"
+      },
       body: JSON.stringify(payload)
     });
     return data.ocs.data;
