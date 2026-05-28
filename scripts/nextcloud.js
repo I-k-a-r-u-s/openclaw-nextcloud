@@ -17608,10 +17608,12 @@ var CONFIG = {
   token: process.env.NEXTCLOUD_TOKEN
 };
 if (!CONFIG.url || !CONFIG.user || !CONFIG.token) {
-  console.error(JSON.stringify({
-    status: "error",
-    message: "Missing configuration. Set NEXTCLOUD_URL, NEXTCLOUD_USER, and NEXTCLOUD_TOKEN."
-  }));
+  console.error(
+    JSON.stringify({
+      status: "error",
+      message: "Missing configuration. Set NEXTCLOUD_URL, NEXTCLOUD_USER, and NEXTCLOUD_TOKEN."
+    })
+  );
   process.exit(1);
 }
 {
@@ -17623,15 +17625,22 @@ if (!CONFIG.url || !CONFIG.user || !CONFIG.token) {
     }
   })();
   if (!parsed) {
-    console.error(JSON.stringify({ status: "error", message: `Invalid NEXTCLOUD_URL: '${CONFIG.url}'` }));
+    console.error(
+      JSON.stringify({
+        status: "error",
+        message: `Invalid NEXTCLOUD_URL: '${CONFIG.url}'`
+      })
+    );
     process.exit(1);
   }
   const isLocalhost = parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1" || parsed.hostname === "[::1]";
   if (parsed.protocol !== "https:" && !isLocalhost && process.env.OPENCLAW_ALLOW_HTTP !== "1") {
-    console.error(JSON.stringify({
-      status: "error",
-      message: `Refusing to send credentials over '${parsed.protocol}//' to '${parsed.host}'. Use https:// or set OPENCLAW_ALLOW_HTTP=1 to override (not recommended).`
-    }));
+    console.error(
+      JSON.stringify({
+        status: "error",
+        message: `Refusing to send credentials over '${parsed.protocol}//' to '${parsed.host}'. Use https:// or set OPENCLAW_ALLOW_HTTP=1 to override (not recommended).`
+      })
+    );
     process.exit(1);
   }
 }
@@ -17643,7 +17652,7 @@ var parser = new XMLParser({
 async function request(endpoint, options = {}) {
   const url = `${CONFIG.url}${endpoint}`;
   const headers = {
-    "Authorization": AUTH_HEADER,
+    Authorization: AUTH_HEADER,
     "User-Agent": "OpenClaw-Nextcloud-Skill",
     ...options.headers
   };
@@ -17670,16 +17679,28 @@ async function request(endpoint, options = {}) {
   }
 }
 function output(data) {
-  console.log(JSON.stringify({
-    status: "success",
-    data
-  }, null, 2));
+  console.log(
+    JSON.stringify(
+      {
+        status: "success",
+        data
+      },
+      null,
+      2
+    )
+  );
 }
 function errorOutput(message) {
-  console.error(JSON.stringify({
-    status: "error",
-    message: message.stack || message
-  }, null, 2));
+  console.error(
+    JSON.stringify(
+      {
+        status: "error",
+        message: message.stack || message
+      },
+      null,
+      2
+    )
+  );
   process.exit(1);
 }
 function ensureArray(item) {
@@ -17692,7 +17713,9 @@ function matchByName(items, name) {
   const exact = items.find((i) => i.displayname === name);
   if (exact) return exact;
   const lower = name.toLowerCase();
-  const ci = items.find((i) => i.displayname && i.displayname.toLowerCase() === lower);
+  const ci = items.find(
+    (i) => i.displayname && i.displayname.toLowerCase() === lower
+  );
   if (ci) return ci;
   const slug = lower.replace(/^https?:\/\/[^/]+/, "").replace(/\/+$/, "").split("/").filter(Boolean).pop();
   if (slug) {
@@ -17705,7 +17728,9 @@ function matchByName(items, name) {
   return items.find((i) => i.url && (i.url === name || name.endsWith(i.url))) || null;
 }
 function parseDateInput(str) {
-  const compact = String(str).match(/^(\d{4})(\d{2})(\d{2})(?:T(\d{2})(\d{2})(\d{2})(Z?))?$/);
+  const compact = String(str).match(
+    /^(\d{4})(\d{2})(\d{2})(?:T(\d{2})(\d{2})(\d{2})(Z?))?$/
+  );
   if (compact) {
     const [, y, mo, d, h = "00", mi = "00", s = "00", z = ""] = compact;
     const date2 = /* @__PURE__ */ new Date(`${y}-${mo}-${d}T${h}:${mi}:${s}${z}`);
@@ -17713,14 +17738,16 @@ function parseDateInput(str) {
   }
   const date = new Date(str);
   if (isNaN(date.getTime())) {
-    throw new Error(`Invalid date '${str}'. Use ISO 8601 (2026-04-15T17:00:00Z) or CalDAV compact format (20260415T170000Z).`);
+    throw new Error(
+      `Invalid date '${str}'. Use ISO 8601 (2026-04-15T17:00:00Z) or CalDAV compact format (20260415T170000Z).`
+    );
   }
   return date;
 }
 var Notes = {
   async list() {
     const data = await request("/index.php/apps/notes/api/v1/notes", {
-      headers: { "Accept": "application/json" }
+      headers: { Accept: "application/json" }
     });
     return data.map((n) => ({
       id: n.id,
@@ -17731,7 +17758,7 @@ var Notes = {
   },
   async get(id) {
     return await request(`/index.php/apps/notes/api/v1/notes/${id}`, {
-      headers: { "Accept": "application/json" }
+      headers: { Accept: "application/json" }
     });
   },
   async create(title, content, category = "") {
@@ -17749,7 +17776,7 @@ var Notes = {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Accept": "application/json"
+        Accept: "application/json"
       },
       body: JSON.stringify(payload)
     });
@@ -17769,13 +17796,15 @@ var Notes = {
     if (content !== void 0) payload.content = content;
     if (category !== void 0) payload.category = category;
     if (Object.keys(payload).length === 0) {
-      throw new Error("Nothing to update. Provide title, content, or category.");
+      throw new Error(
+        "Nothing to update. Provide title, content, or category."
+      );
     }
     const data = await request(`/index.php/apps/notes/api/v1/notes/${id}`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
-        "Accept": "application/json"
+        Accept: "application/json"
       },
       body: JSON.stringify(payload)
     });
@@ -17786,7 +17815,7 @@ var Notes = {
     await request(`/index.php/apps/notes/api/v1/notes/${id}`, {
       method: "DELETE",
       headers: {
-        "Accept": "application/json"
+        Accept: "application/json"
       }
     });
     return { success: true, id };
@@ -17808,7 +17837,7 @@ var Files = {
     const response = await request(endpoint, {
       method: "PROPFIND",
       headers: {
-        "Depth": "1",
+        Depth: "1",
         "Content-Type": "application/xml"
       },
       body: propfindBody
@@ -17824,9 +17853,12 @@ var Files = {
       if (!propstats[0] || !propstats[0]["d:prop"]) return null;
       const props = propstats[0]["d:prop"];
       const isDir = props["d:resourcetype"] && props["d:resourcetype"]["d:collection"] !== void 0;
-      const name = decodeURIComponent(href.split("/").filter((p) => p).pop());
+      const name = decodeURIComponent(
+        href.split("/").filter((p) => p).pop()
+      );
       if (href.endsWith(encodeURIComponent(CONFIG.user) + "/" + cleanPath) || href.endsWith(encodeURIComponent(CONFIG.user) + "/" + cleanPath + "/")) {
-        if (cleanPath !== "" && name === cleanPath.split("/").pop()) return null;
+        if (cleanPath !== "" && name === cleanPath.split("/").pop())
+          return null;
       }
       const fileId = props["oc:fileid"] != null ? String(props["oc:fileid"]) : null;
       return {
@@ -17848,7 +17880,9 @@ var Files = {
       for (const seg of segments.slice(0, -1)) {
         currentPath = currentPath ? `${currentPath}/${seg}` : seg;
         try {
-          await request(`/remote.php/dav/files/${CONFIG.user}/${currentPath}`, { method: "MKCOL" });
+          await request(`/remote.php/dav/files/${CONFIG.user}/${currentPath}`, {
+            method: "MKCOL"
+          });
         } catch (e) {
           if (e.status !== 405) throw e;
         }
@@ -17871,11 +17905,13 @@ var Files = {
     const response = await fetch(`${CONFIG.url}${endpoint}`, {
       method: "GET",
       headers: {
-        "Authorization": `Basic ${Buffer2.from(`${CONFIG.user}:${CONFIG.token}`).toString("base64")}`
+        Authorization: `Basic ${Buffer2.from(`${CONFIG.user}:${CONFIG.token}`).toString("base64")}`
       }
     });
     if (!response.ok) {
-      throw new Error(`Request failed: HTTP ${response.status}: ${response.statusText}`);
+      throw new Error(
+        `Request failed: HTTP ${response.status}: ${response.statusText}`
+      );
     }
     const content = await response.text();
     return { path: filePath, content, size: content.length };
@@ -17924,7 +17960,8 @@ var Files = {
       headers: { "Content-Type": "application/xml" },
       body
     });
-    if (!response["d:multistatus"] || !response["d:multistatus"]["d:response"]) return [];
+    if (!response["d:multistatus"] || !response["d:multistatus"]["d:response"])
+      return [];
     const responses = ensureArray(response["d:multistatus"]["d:response"]);
     const baseUrl = CONFIG.url.replace(/\/+$/, "");
     return responses.map((r) => {
@@ -17951,15 +17988,17 @@ var CalDAV = {
     const endpoint = `/remote.php/dav/calendars/${CONFIG.user}/`;
     const response = await request(endpoint, {
       method: "PROPFIND",
-      headers: { "Depth": "1" }
+      headers: { Depth: "1" }
     });
-    if (!response["d:multistatus"] || !response["d:multistatus"]["d:response"]) return [];
+    if (!response["d:multistatus"] || !response["d:multistatus"]["d:response"])
+      return [];
     const responses = ensureArray(response["d:multistatus"]["d:response"]);
     return responses.map((r) => {
       const propstats = ensureArray(r["d:propstat"]);
       if (!propstats[0] || !propstats[0]["d:prop"]) return null;
       const props = propstats[0]["d:prop"];
-      if (!props["d:resourcetype"] || !("cal:calendar" in props["d:resourcetype"])) return null;
+      if (!props["d:resourcetype"] || !("cal:calendar" in props["d:resourcetype"]))
+        return null;
       let compType = null;
       const compSet = props["cal:supported-calendar-component-set"];
       if (compSet && compSet["cal:comp"]) {
@@ -17972,7 +18011,9 @@ var CalDAV = {
         displayname: props["d:displayname"],
         componentType: compType
       };
-    }).filter((c) => c && (!componentType || c.componentType === componentType));
+    }).filter(
+      (c) => c && (!componentType || c.componentType === componentType)
+    );
   },
   async getEvents(start, end) {
     const calendars = await this.findCalendars("VEVENT");
@@ -18002,10 +18043,11 @@ var CalDAV = {
       try {
         const response = await request(cal.url, {
           method: "REPORT",
-          headers: { "Depth": "1", "Content-Type": "application/xml" },
+          headers: { Depth: "1", "Content-Type": "application/xml" },
           body
         });
-        if (!response["d:multistatus"] || !response["d:multistatus"]["d:response"]) continue;
+        if (!response["d:multistatus"] || !response["d:multistatus"]["d:response"])
+          continue;
         const responses = ensureArray(response["d:multistatus"]["d:response"]);
         for (const r of responses) {
           const propstats = ensureArray(r["d:propstat"]);
@@ -18014,7 +18056,9 @@ var CalDAV = {
           const unfolded = calData.replace(/\r?\n[ \t]/g, "");
           const uidMatch = calData.match(/UID:(.*)/);
           const summaryMatch = calData.match(/SUMMARY:(.*)/);
-          const descriptionMatch = unfolded.match(/^DESCRIPTION(?:;[^:]*)?:(.*)$/m);
+          const descriptionMatch = unfolded.match(
+            /^DESCRIPTION(?:;[^:]*)?:(.*)$/m
+          );
           const dtstartMatch = calData.match(/DTSTART(?:;.*)?:(.*)/);
           const dtendMatch = calData.match(/DTEND(?:;.*)?:(.*)/);
           const locationMatch = calData.match(/LOCATION:(.*)/);
@@ -18039,7 +18083,9 @@ var CalDAV = {
       const matched = matchByName(calendars, calendarName);
       if (!matched) {
         const available = calendars.map((c) => c.displayname).join(", ") || "(none)";
-        throw new Error(`Task-enabled calendar '${calendarName}' not found. Available: ${available}`);
+        throw new Error(
+          `Task-enabled calendar '${calendarName}' not found. Available: ${available}`
+        );
       }
       calendars = [matched];
     }
@@ -18066,10 +18112,11 @@ var CalDAV = {
       try {
         const response = await request(cal.url, {
           method: "REPORT",
-          headers: { "Depth": "1", "Content-Type": "application/xml" },
+          headers: { Depth: "1", "Content-Type": "application/xml" },
           body
         });
-        if (!response["d:multistatus"] || !response["d:multistatus"]["d:response"]) continue;
+        if (!response["d:multistatus"] || !response["d:multistatus"]["d:response"])
+          continue;
         const responses = ensureArray(response["d:multistatus"]["d:response"]);
         for (const r of responses) {
           const propstats = ensureArray(r["d:propstat"]);
@@ -18079,7 +18126,9 @@ var CalDAV = {
           const calData = propstats[0]["d:prop"]["cal:calendar-data"];
           const unfolded = calData.replace(/\r?\n[ \t]/g, "");
           const summaryMatch = calData.match(/SUMMARY:(.*)/);
-          const descriptionMatch = unfolded.match(/^DESCRIPTION(?:;[^:]*)?:(.*)$/m);
+          const descriptionMatch = unfolded.match(
+            /^DESCRIPTION(?:;[^:]*)?:(.*)$/m
+          );
           const statusMatch = calData.match(/STATUS:(.*)/);
           const uidMatch = calData.match(/UID:(.*)/);
           const dueMatch = calData.match(/DUE(?:;.*)?:(.*)/);
@@ -18111,7 +18160,9 @@ var CalDAV = {
       const typeDesc = componentType === "VTODO" ? "task-enabled " : componentType === "VEVENT" ? "event-enabled " : "";
       if (calendarName) {
         const available = calendars.map((c) => c.displayname).join(", ") || "(none)";
-        throw new Error(`${typeDesc}Calendar '${calendarName}' not found. Available: ${available}`);
+        throw new Error(
+          `${typeDesc}Calendar '${calendarName}' not found. Available: ${available}`
+        );
       }
       throw new Error(`No ${typeDesc}calendars found.`);
     }
@@ -18125,7 +18176,9 @@ var CalDAV = {
       if (found) searchTargets = [found];
       else {
         const available = calendars.map((c) => c.displayname).join(", ") || "(none)";
-        throw new Error(`Task-enabled calendar '${calendarName}' not found. Available: ${available}`);
+        throw new Error(
+          `Task-enabled calendar '${calendarName}' not found. Available: ${available}`
+        );
       }
     }
     const body = `
@@ -18149,10 +18202,11 @@ var CalDAV = {
       try {
         const response = await request(cal.url, {
           method: "REPORT",
-          headers: { "Depth": "1", "Content-Type": "application/xml" },
+          headers: { Depth: "1", "Content-Type": "application/xml" },
           body
         });
-        if (!response["d:multistatus"] || !response["d:multistatus"]["d:response"]) continue;
+        if (!response["d:multistatus"] || !response["d:multistatus"]["d:response"])
+          continue;
         const responses = ensureArray(response["d:multistatus"]["d:response"]);
         if (responses.length > 0) {
           const propstats = ensureArray(responses[0]["d:propstat"]);
@@ -18179,7 +18233,9 @@ var CalDAV = {
     }
     const endMatch = vcal.match(/END:(VTODO|VEVENT)/);
     if (!endMatch) {
-      throw new Error("Cannot insert property: no END:VTODO or END:VEVENT found in calendar data.");
+      throw new Error(
+        "Cannot insert property: no END:VTODO or END:VEVENT found in calendar data."
+      );
     }
     return vcal.replace(endMatch[0], `${newLine}
 ${endMatch[0]}`);
@@ -18226,12 +18282,19 @@ END:VCALENDAR`;
     const task = await this.findTaskPath(uid, calendarName);
     if (!task) throw new Error(`Task ${uid} not found.`);
     let vtodo = task.data;
-    if (updates.title) vtodo = this._updateProperty(vtodo, "SUMMARY", updates.title);
-    if (updates.priority) vtodo = this._updateProperty(vtodo, "PRIORITY", updates.priority);
-    if (updates.description) vtodo = this._updateProperty(vtodo, "DESCRIPTION", updates.description);
+    if (updates.title)
+      vtodo = this._updateProperty(vtodo, "SUMMARY", updates.title);
+    if (updates.priority)
+      vtodo = this._updateProperty(vtodo, "PRIORITY", updates.priority);
+    if (updates.description)
+      vtodo = this._updateProperty(vtodo, "DESCRIPTION", updates.description);
     if (updates.dueDate) {
       const due = parseDateInput(updates.dueDate);
-      vtodo = this._updateProperty(vtodo, "DUE", (0, import_date_fns.format)(due, "yyyyMMdd'T'HHmmss'Z'"));
+      vtodo = this._updateProperty(
+        vtodo,
+        "DUE",
+        (0, import_date_fns.format)(due, "yyyyMMdd'T'HHmmss'Z'")
+      );
     }
     await request(task.href, {
       method: "PUT",
@@ -18317,7 +18380,9 @@ END:VCALENDAR`;
       if (found) searchTargets = [found];
       else {
         const available = calendars.map((c) => c.displayname).join(", ") || "(none)";
-        throw new Error(`Event-enabled calendar '${calendarName}' not found. Available: ${available}`);
+        throw new Error(
+          `Event-enabled calendar '${calendarName}' not found. Available: ${available}`
+        );
       }
     }
     const body = `
@@ -18341,10 +18406,11 @@ END:VCALENDAR`;
       try {
         const response = await request(cal.url, {
           method: "REPORT",
-          headers: { "Depth": "1", "Content-Type": "application/xml" },
+          headers: { Depth: "1", "Content-Type": "application/xml" },
           body
         });
-        if (!response["d:multistatus"] || !response["d:multistatus"]["d:response"]) continue;
+        if (!response["d:multistatus"] || !response["d:multistatus"]["d:response"])
+          continue;
         const responses = ensureArray(response["d:multistatus"]["d:response"]);
         if (responses.length > 0) {
           const propstats = ensureArray(responses[0]["d:propstat"]);
@@ -18364,14 +18430,23 @@ END:VCALENDAR`;
     const event = await this.findEventPath(uid, calendarName);
     if (!event) throw new Error(`Event ${uid} not found.`);
     let vevent = event.data;
-    if (updates.summary) vevent = this._updateProperty(vevent, "SUMMARY", updates.summary);
+    if (updates.summary)
+      vevent = this._updateProperty(vevent, "SUMMARY", updates.summary);
     if (updates.start) {
       const d = parseDateInput(updates.start);
-      vevent = this._updateProperty(vevent, "DTSTART", d.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z");
+      vevent = this._updateProperty(
+        vevent,
+        "DTSTART",
+        d.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z"
+      );
     }
     if (updates.end) {
       const d = parseDateInput(updates.end);
-      vevent = this._updateProperty(vevent, "DTEND", d.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z");
+      vevent = this._updateProperty(
+        vevent,
+        "DTEND",
+        d.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z"
+      );
     }
     if (updates.description !== void 0) {
       vevent = this._updateProperty(vevent, "DESCRIPTION", updates.description);
@@ -18399,11 +18474,13 @@ END:VCALENDAR`;
   }
 };
 var Shares = {
-  _ocsHeaders: { "OCS-APIREQUEST": "true", "Accept": "application/json" },
+  _ocsHeaders: { "OCS-APIREQUEST": "true", Accept: "application/json" },
   _unwrap(envelope) {
     const meta = envelope && envelope.ocs && envelope.ocs.meta;
     if (!meta || meta.status !== "ok") {
-      throw new Error(`OCS error ${meta && meta.statuscode}: ${meta && meta.message}`);
+      throw new Error(
+        `OCS error ${meta && meta.statuscode}: ${meta && meta.message}`
+      );
     }
     return envelope.ocs.data;
   },
@@ -18426,11 +18503,19 @@ var Shares = {
       const cleanPath = path.startsWith("/") ? path : `/${path}`;
       endpoint += `?path=${encodeURIComponent(cleanPath)}`;
     }
-    const envelope = await request(endpoint, { method: "GET", headers: this._ocsHeaders });
+    const envelope = await request(endpoint, {
+      method: "GET",
+      headers: this._ocsHeaders
+    });
     const data = this._unwrap(envelope) || [];
     return (Array.isArray(data) ? data : [data]).map((s) => this._normalize(s));
   },
-  async createLink({ path, permissions = "read", password = null, expireDate = null }) {
+  async createLink({
+    path,
+    permissions = "read",
+    password = null,
+    expireDate = null
+  }) {
     if (!path) throw new Error("Missing path for share");
     const cleanPath = path.startsWith("/") ? path : `/${path}`;
     const permMap = {
@@ -18441,7 +18526,9 @@ var Shares = {
     };
     const perms = permMap[permissions];
     if (perms === void 0) {
-      throw new Error(`Unknown --permissions '${permissions}'. Use 'read' or 'edit'.`);
+      throw new Error(
+        `Unknown --permissions '${permissions}'. Use 'read' or 'edit'.`
+      );
     }
     const body = new URLSearchParams({
       path: cleanPath,
@@ -18451,11 +18538,17 @@ var Shares = {
     });
     if (password) body.set("password", password);
     if (expireDate) body.set("expireDate", expireDate);
-    const envelope = await request("/ocs/v2.php/apps/files_sharing/api/v1/shares", {
-      method: "POST",
-      headers: { ...this._ocsHeaders, "Content-Type": "application/x-www-form-urlencoded" },
-      body: body.toString()
-    });
+    const envelope = await request(
+      "/ocs/v2.php/apps/files_sharing/api/v1/shares",
+      {
+        method: "POST",
+        headers: {
+          ...this._ocsHeaders,
+          "Content-Type": "application/x-www-form-urlencoded"
+        },
+        body: body.toString()
+      }
+    );
     const s = this._unwrap(envelope);
     return { ...this._normalize(s), passwordProtected: !!password };
   },
@@ -18469,20 +18562,147 @@ var Shares = {
     return { id, status: "deleted" };
   }
 };
+var Talk = {
+  async listConversations() {
+    const data = await request("/ocs/v2.php/apps/spreed/api/v4/room", {
+      headers: { Accept: "application/json" }
+    });
+    return ensureArray(data.ocs.data);
+  },
+  async getConversation(token) {
+    const data = await request(`/ocs/v2.php/apps/spreed/api/v4/room/${token}`, {
+      headers: { Accept: "application/json" }
+    });
+    return data.ocs.data;
+  },
+  async createConversation(roomName, roomType = "group", invite = null, options = {}) {
+    if (!roomName || roomName.trim() === "") {
+      throw new Error("Room name is required for creating a conversation.");
+    }
+    const typeMap = {
+      group: 2,
+      public: 3,
+      "note-to-self": 6
+    };
+    const payload = {
+      roomName: roomName.trim(),
+      roomType: typeMap[roomType] || 2
+    };
+    if (invite) payload.invite = invite;
+    if (options.description) payload.description = options.description;
+    if (options.password) payload.password = options.password;
+    const data = await request("/ocs/v2.php/apps/spreed/api/v4/room", {
+      method: "POST",
+      headers: { Accept: "application/json" },
+      body: JSON.stringify(payload)
+    });
+    return data.ocs.data;
+  },
+  async deleteConversation(token) {
+    if (!token) throw new Error("Conversation token is required for deletion.");
+    await request(`/ocs/v2.php/apps/spreed/api/v4/room/${token}`, {
+      method: "DELETE"
+    });
+    return { token, status: "deleted" };
+  },
+  async listMessages(token, options = {}) {
+    if (!token) throw new Error("Conversation token is required.");
+    const params = new URLSearchParams({
+      lookIntoFuture: options.lookIntoFuture !== void 0 ? options.lookIntoFuture : 0,
+      limit: options.limit !== void 0 ? options.limit : 50,
+      setReadMarker: options.setReadMarker !== false ? 1 : 0
+    });
+    const data = await request(
+      `/ocs/v2.php/apps/spreed/api/v1/chat/${token}?${params}`,
+      {
+        headers: { Accept: "application/json" }
+      }
+    );
+    return ensureArray(data.ocs.data);
+  },
+  async sendMessage(token, message, replyTo = null) {
+    if (!token) throw new Error("Conversation token is required.");
+    if (!message || message.trim() === "") {
+      throw new Error("Message content is required.");
+    }
+    const payload = { message: message.trim() };
+    if (replyTo) payload.replyTo = replyTo;
+    const data = await request(`/ocs/v2.php/apps/spreed/api/v1/chat/${token}`, {
+      method: "POST",
+      headers: { Accept: "application/json" },
+      body: JSON.stringify(payload)
+    });
+    return data.ocs.data;
+  },
+  async deleteMessage(token, messageId) {
+    if (!token) throw new Error("Conversation token is required.");
+    if (!messageId) throw new Error("Message ID is required.");
+    await request(`/ocs/v2.php/apps/spreed/api/v1/chat/${token}/${messageId}`, {
+      method: "DELETE"
+    });
+    return { messageId, status: "deleted" };
+  },
+  async editMessage(token, messageId, message) {
+    if (!token) throw new Error("Conversation token is required.");
+    if (!messageId) throw new Error("Message ID is required.");
+    if (!message || message.trim() === "") {
+      throw new Error("Message content is required.");
+    }
+    const payload = { message: message.trim() };
+    const data = await request(
+      `/ocs/v2.php/apps/spreed/api/v1/chat/${token}/${messageId}`,
+      {
+        method: "PUT",
+        headers: { Accept: "application/json" },
+        body: JSON.stringify(payload)
+      }
+    );
+    return data.ocs.data;
+  },
+  async listBots(token = null) {
+    const endpoint = token ? `/ocs/v2.php/apps/spreed/api/v1/bot/${token}` : "/ocs/v2.php/apps/spreed/api/v1/bot/admin";
+    const data = await request(endpoint, {
+      headers: { Accept: "application/json" }
+    });
+    return ensureArray(data.ocs.data);
+  },
+  async enableBotInConversation(token, botId) {
+    if (!token) throw new Error("Conversation token is required.");
+    if (!botId) throw new Error("Bot ID is required.");
+    const data = await request(
+      `/ocs/v2.php/apps/spreed/api/v1/bot/${token}/${botId}`,
+      {
+        method: "POST",
+        headers: { Accept: "application/json" }
+      }
+    );
+    return { token, botId, status: data.ocs.meta.status };
+  },
+  async disableBotInConversation(token, botId) {
+    if (!token) throw new Error("Conversation token is required.");
+    if (!botId) throw new Error("Bot ID is required.");
+    await request(`/ocs/v2.php/apps/spreed/api/v1/bot/${token}/${botId}`, {
+      method: "DELETE"
+    });
+    return { token, botId, status: "disabled" };
+  }
+};
 var Contacts = {
   async findAddressBooks() {
     const endpoint = `/remote.php/dav/addressbooks/users/${CONFIG.user}/`;
     const response = await request(endpoint, {
       method: "PROPFIND",
-      headers: { "Depth": "1" }
+      headers: { Depth: "1" }
     });
-    if (!response["d:multistatus"] || !response["d:multistatus"]["d:response"]) return [];
+    if (!response["d:multistatus"] || !response["d:multistatus"]["d:response"])
+      return [];
     const responses = ensureArray(response["d:multistatus"]["d:response"]);
     return responses.map((r) => {
       const propstats = ensureArray(r["d:propstat"]);
       if (!propstats[0] || !propstats[0]["d:prop"]) return null;
       const props = propstats[0]["d:prop"];
-      if (!props["d:resourcetype"] || !("card:addressbook" in props["d:resourcetype"])) return null;
+      if (!props["d:resourcetype"] || !("card:addressbook" in props["d:resourcetype"]))
+        return null;
       let name = props["d:displayname"];
       if (!name) {
         const urlParts = r["d:href"].split("/").filter((p) => p);
@@ -18505,7 +18725,9 @@ var Contacts = {
     if (!target) {
       if (addressBookName) {
         const available = addressBooks.map((a) => a.displayname).join(", ") || "(none)";
-        throw new Error(`Address book '${addressBookName}' not found. Available: ${available}`);
+        throw new Error(
+          `Address book '${addressBookName}' not found. Available: ${available}`
+        );
       }
       throw new Error("No address books found.");
     }
@@ -18517,7 +18739,9 @@ var Contacts = {
       const matched = matchByName(addressBooks, addressBookName);
       if (!matched) {
         const available = addressBooks.map((a) => a.displayname).join(", ") || "(none)";
-        throw new Error(`Address book '${addressBookName}' not found. Available: ${available}`);
+        throw new Error(
+          `Address book '${addressBookName}' not found. Available: ${available}`
+        );
       }
       addressBooks = [matched];
     }
@@ -18534,10 +18758,11 @@ var Contacts = {
       try {
         const response = await request(ab.url, {
           method: "REPORT",
-          headers: { "Depth": "1", "Content-Type": "application/xml" },
+          headers: { Depth: "1", "Content-Type": "application/xml" },
           body
         });
-        if (!response["d:multistatus"] || !response["d:multistatus"]["d:response"]) continue;
+        if (!response["d:multistatus"] || !response["d:multistatus"]["d:response"])
+          continue;
         const responses = ensureArray(response["d:multistatus"]["d:response"]);
         for (const r of responses) {
           const propstats = ensureArray(r["d:propstat"]);
@@ -18565,13 +18790,13 @@ var Contacts = {
     const fn = getField("FN");
     const n = getField("N");
     const phones = [];
-    const phoneRegex = /^TEL(?:;[^:]*)?:(.*)$/gmi;
+    const phoneRegex = /^TEL(?:;[^:]*)?:(.*)$/gim;
     let phoneMatch;
     while ((phoneMatch = phoneRegex.exec(vcard)) !== null) {
       phones.push(cleanValue(phoneMatch[1]));
     }
     const emails = [];
-    const emailRegex = /^EMAIL(?:;[^:]*)?:(.*)$/gmi;
+    const emailRegex = /^EMAIL(?:;[^:]*)?:(.*)$/gim;
     let emailMatch;
     while ((emailMatch = emailRegex.exec(vcard)) !== null) {
       emails.push(cleanValue(emailMatch[1]));
@@ -18605,7 +18830,9 @@ var Contacts = {
       if (found) addressBooks = [found];
       else {
         const available = addressBooks.map((a) => a.displayname).join(", ") || "(none)";
-        throw new Error(`Address book '${addressBookName}' not found. Available: ${available}`);
+        throw new Error(
+          `Address book '${addressBookName}' not found. Available: ${available}`
+        );
       }
     }
     const body = `
@@ -18625,10 +18852,11 @@ var Contacts = {
       try {
         const response = await request(ab.url, {
           method: "REPORT",
-          headers: { "Depth": "1", "Content-Type": "application/xml" },
+          headers: { Depth: "1", "Content-Type": "application/xml" },
           body
         });
-        if (!response["d:multistatus"] || !response["d:multistatus"]["d:response"]) continue;
+        if (!response["d:multistatus"] || !response["d:multistatus"]["d:response"])
+          continue;
         const responses = ensureArray(response["d:multistatus"]["d:response"]);
         if (responses.length > 0) {
           const propstats = ensureArray(responses[0]["d:propstat"]);
@@ -18706,14 +18934,23 @@ END:VCARD`);
       if (nameParts.length >= 2) {
         const lastName = nameParts[nameParts.length - 1];
         const firstName = nameParts.slice(0, -1).join(" ");
-        vcard = this._updateVCardField(vcard, "N", `${lastName};${firstName};;;`);
+        vcard = this._updateVCardField(
+          vcard,
+          "N",
+          `${lastName};${firstName};;;`
+        );
       }
     }
-    if (updates.email) vcard = this._updateVCardField(vcard, "EMAIL", updates.email);
-    if (updates.phone) vcard = this._updateVCardField(vcard, "TEL", updates.phone);
-    if (updates.organization) vcard = this._updateVCardField(vcard, "ORG", updates.organization);
-    if (updates.title) vcard = this._updateVCardField(vcard, "TITLE", updates.title);
-    if (updates.note) vcard = this._updateVCardField(vcard, "NOTE", updates.note);
+    if (updates.email)
+      vcard = this._updateVCardField(vcard, "EMAIL", updates.email);
+    if (updates.phone)
+      vcard = this._updateVCardField(vcard, "TEL", updates.phone);
+    if (updates.organization)
+      vcard = this._updateVCardField(vcard, "ORG", updates.organization);
+    if (updates.title)
+      vcard = this._updateVCardField(vcard, "TITLE", updates.title);
+    if (updates.note)
+      vcard = this._updateVCardField(vcard, "NOTE", updates.note);
     await request(contact.href, {
       method: "PUT",
       headers: {
@@ -18738,7 +18975,9 @@ END:VCARD`);
       const matched = matchByName(addressBooks, addressBookName);
       if (!matched) {
         const available = addressBooks.map((a) => a.displayname).join(", ") || "(none)";
-        throw new Error(`Address book '${addressBookName}' not found. Available: ${available}`);
+        throw new Error(
+          `Address book '${addressBookName}' not found. Available: ${available}`
+        );
       }
       addressBooks = [matched];
     }
@@ -18769,10 +19008,11 @@ END:VCARD`);
       try {
         const response = await request(ab.url, {
           method: "REPORT",
-          headers: { "Depth": "1", "Content-Type": "application/xml" },
+          headers: { Depth: "1", "Content-Type": "application/xml" },
           body
         });
-        if (!response["d:multistatus"] || !response["d:multistatus"]["d:response"]) continue;
+        if (!response["d:multistatus"] || !response["d:multistatus"]["d:response"])
+          continue;
         const responses = ensureArray(response["d:multistatus"]["d:response"]);
         for (const r of responses) {
           const propstats = ensureArray(r["d:propstat"]);
@@ -18814,9 +19054,12 @@ async function main() {
         const title = args[titleIndex + 1];
         const content = args[contentIndex + 1];
         const category = categoryIndex !== -1 ? args[categoryIndex + 1] : "";
-        if (!title || title.startsWith("--")) throw new Error("Invalid title provided");
-        if (!content || content.startsWith("--")) throw new Error("Invalid content provided");
-        if (category && category.startsWith("--")) throw new Error("Invalid category provided");
+        if (!title || title.startsWith("--"))
+          throw new Error("Invalid title provided");
+        if (!content || content.startsWith("--"))
+          throw new Error("Invalid content provided");
+        if (category && category.startsWith("--"))
+          throw new Error("Invalid category provided");
         const result = await Notes.create(title, content, category);
         output(result);
       } else if (subCommand === "edit") {
@@ -18893,7 +19136,16 @@ async function main() {
         const description = descIndex !== -1 ? args[descIndex + 1] : null;
         const locIndex = args.indexOf("--location");
         const location = locIndex !== -1 ? args[locIndex + 1] : null;
-        output(await CalDAV.createEvent(summary, start, end, calendar, description, location));
+        output(
+          await CalDAV.createEvent(
+            summary,
+            start,
+            end,
+            calendar,
+            description,
+            location
+          )
+        );
       } else if (subCommand === "edit") {
         const uidIndex = args.indexOf("--uid");
         if (uidIndex === -1) throw new Error("Missing --uid");
@@ -18940,7 +19192,15 @@ async function main() {
         const priority = prioIndex !== -1 ? args[prioIndex + 1] : null;
         const descIndex = args.indexOf("--description");
         const description = descIndex !== -1 ? args[descIndex + 1] : null;
-        output(await CalDAV.createTask(title, calendar, dueDate, priority, description));
+        output(
+          await CalDAV.createTask(
+            title,
+            calendar,
+            dueDate,
+            priority,
+            description
+          )
+        );
       } else if (subCommand === "edit") {
         const uidIndex = args.indexOf("--uid");
         if (uidIndex === -1) throw new Error("Missing --uid");
@@ -18982,7 +19242,12 @@ async function main() {
         if (type === "tasks") componentType = "VTODO";
         else if (type === "events") componentType = "VEVENT";
         const calendars = await CalDAV.findCalendars(componentType);
-        output(calendars.map((c) => ({ name: c.displayname, type: c.componentType === "VTODO" ? "tasks" : "events" })));
+        output(
+          calendars.map((c) => ({
+            name: c.displayname,
+            type: c.componentType === "VTODO" ? "tasks" : "events"
+          }))
+        );
       } else {
         throw new Error("Unknown calendars command");
       }
@@ -19004,7 +19269,14 @@ async function main() {
         const password = pwIndex !== -1 ? args[pwIndex + 1] : null;
         const expIndex = args.indexOf("--expire");
         const expireDate = expIndex !== -1 ? args[expIndex + 1] : null;
-        output(await Shares.createLink({ path: sharePath, permissions, password, expireDate }));
+        output(
+          await Shares.createLink({
+            path: sharePath,
+            permissions,
+            password,
+            expireDate
+          })
+        );
       } else if (subCommand === "list") {
         const pathIndex = args.indexOf("--path");
         const sharePath = pathIndex !== -1 ? args[pathIndex + 1] : null;
@@ -19015,6 +19287,112 @@ async function main() {
         output(await Shares.delete({ id: args[idIndex + 1] }));
       } else {
         throw new Error("Unknown shares command");
+      }
+    } else if (command === "talk") {
+      if (subCommand === "list") {
+        const result = await Talk.listConversations();
+        output(result);
+      } else if (subCommand === "create") {
+        const nameIndex = args.indexOf("--name");
+        if (nameIndex === -1) throw new Error("Missing --name");
+        const roomName = args[nameIndex + 1];
+        const typeIndex = args.indexOf("--type");
+        const roomType = typeIndex !== -1 ? args[typeIndex + 1] : "group";
+        const descIndex = args.indexOf("--description");
+        const description = descIndex !== -1 ? args[descIndex + 1] : null;
+        const passwordIndex = args.indexOf("--password");
+        const password = passwordIndex !== -1 ? args[passwordIndex + 1] : null;
+        const inviteIndex = args.indexOf("--invite");
+        const invite = inviteIndex !== -1 ? args[inviteIndex + 1] : null;
+        const result = await Talk.createConversation(
+          roomName,
+          roomType,
+          invite,
+          description ? { description } : {}
+        );
+        output(result);
+      } else if (subCommand === "delete") {
+        const tokenIndex = args.indexOf("--token");
+        if (tokenIndex === -1) throw new Error("Missing --token");
+        output(await Talk.deleteConversation(args[tokenIndex + 1]));
+      } else if (subCommand === "messages") {
+        const tokenIndex = args.indexOf("--token");
+        if (tokenIndex === -1) throw new Error("Missing --token");
+        const token = args[tokenIndex + 1];
+        const limitIndex = args.indexOf("--limit");
+        const limit = limitIndex !== -1 ? parseInt(args[limitIndex + 1], 10) : 50;
+        const lookIntoFutureIndex = args.indexOf("--look-into-future");
+        const lookIntoFuture = lookIntoFutureIndex !== -1 ? parseInt(args[lookIntoFutureIndex + 1], 10) : 0;
+        output(
+          await Talk.listMessages(token, {
+            limit,
+            lookIntoFuture,
+            setReadMarker: true
+          })
+        );
+      } else if (subCommand === "send") {
+        const tokenIndex = args.indexOf("--token");
+        if (tokenIndex === -1) throw new Error("Missing --token");
+        const token = args[tokenIndex + 1];
+        const messageIndex = args.indexOf("--message");
+        if (messageIndex === -1) throw new Error("Missing --message");
+        const message = args[messageIndex + 1];
+        const replyToIndex = args.indexOf("--reply-to");
+        const replyTo = replyToIndex !== -1 ? parseInt(args[replyToIndex + 1], 10) : null;
+        output(await Talk.sendMessage(token, message, replyTo));
+      } else if (subCommand === "delete-message") {
+        const tokenIndex = args.indexOf("--token");
+        if (tokenIndex === -1) throw new Error("Missing --token");
+        const messageIdIndex = args.indexOf("--message-id");
+        if (messageIdIndex === -1) throw new Error("Missing --message-id");
+        output(
+          await Talk.deleteMessage(
+            args[tokenIndex + 1],
+            parseInt(args[messageIdIndex + 1], 10)
+          )
+        );
+      } else if (subCommand === "edit-message") {
+        const tokenIndex = args.indexOf("--token");
+        if (tokenIndex === -1) throw new Error("Missing --token");
+        const messageIdIndex = args.indexOf("--message-id");
+        if (messageIdIndex === -1) throw new Error("Missing --message-id");
+        const messageIndex = args.indexOf("--message");
+        if (messageIndex === -1) throw new Error("Missing --message");
+        output(
+          await Talk.editMessage(
+            args[tokenIndex + 1],
+            parseInt(args[messageIdIndex + 1], 10),
+            args[messageIndex + 1]
+          )
+        );
+      } else if (subCommand === "enable-bot") {
+        const tokenIndex = args.indexOf("--token");
+        if (tokenIndex === -1) throw new Error("Missing --token");
+        const botIdIndex = args.indexOf("--bot-id");
+        if (botIdIndex === -1) throw new Error("Missing --bot-id");
+        output(
+          await Talk.enableBotInConversation(
+            args[tokenIndex + 1],
+            parseInt(args[botIdIndex + 1], 10)
+          )
+        );
+      } else if (subCommand === "disable-bot") {
+        const tokenIndex = args.indexOf("--token");
+        if (tokenIndex === -1) throw new Error("Missing --token");
+        const botIdIndex = args.indexOf("--bot-id");
+        if (botIdIndex === -1) throw new Error("Missing --bot-id");
+        output(
+          await Talk.disableBotInConversation(
+            args[tokenIndex + 1],
+            parseInt(args[botIdIndex + 1], 10)
+          )
+        );
+      } else if (subCommand === "list-bots") {
+        const tokenIndex = args.indexOf("--token");
+        const token = tokenIndex !== -1 ? args[tokenIndex + 1] : null;
+        output(await Talk.listBots(token));
+      } else {
+        throw new Error("Unknown talk command");
       }
     } else if (command === "contacts") {
       if (subCommand === "list") {
@@ -19085,7 +19463,9 @@ async function main() {
         throw new Error("Unknown contacts command");
       }
     } else {
-      console.log("Usage: node index.js <notes|files|calendar|calendars|tasks|contacts|addressbooks|shares> <list|get|create|search|edit|delete|create-link> [options]");
+      console.log(
+        "Usage: node index.js <notes|files|calendar|calendars|tasks|talk|contacts|addressbooks|shares> <list|get|create|search|edit|delete|create-link> [options]"
+      );
     }
   } catch (err) {
     errorOutput(err);
