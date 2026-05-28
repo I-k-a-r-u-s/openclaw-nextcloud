@@ -24,6 +24,16 @@ node scripts/nextcloud.js talk create --name "Test Room" --type group
 node scripts/nextcloud.js talk send --token <token> --message "Hello from OpenClaw!"
 ```
 
+5. Test adding a participant:
+```bash
+node scripts/nextcloud.js talk add-participant --token <token> --user username
+```
+
+6. Test enabling bot:
+```bash
+node scripts/nextcloud.js talk enable-bot --token <token> --bot-id <bot-id>
+```
+
 ## Automated Test Script
 
 Run the test script:
@@ -87,6 +97,14 @@ This will:
     "message": "Hello from OpenClaw!",
     ...
   }
+}
+```
+
+### Add Participant
+```json
+{
+  "status": "success",
+  "data": []
 }
 ```
 

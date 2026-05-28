@@ -124,6 +124,11 @@ node scripts/nextcloud.js talk enable-bot --token ABC123 --bot-id 5
 node scripts/nextcloud.js talk disable-bot --token ABC123 --bot-id 5
 ```
 
+### 12. Add Participant to Room
+```bash
+node scripts/nextcloud.js talk add-participant --token ABC123 --user username [--source users|groups|circles]
+```
+
 ## Environment Variables
 
 ```bash
