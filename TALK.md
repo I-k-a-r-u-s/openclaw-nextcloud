@@ -43,7 +43,12 @@ The OpenClaw skill uses your existing Nextcloud API credentials:
 node scripts/nextcloud.js talk list
 ```
 
-### 2. Create Conversation
+### 2. Get Conversation Details
+```bash
+node scripts/nextcloud.js talk get --token ABC123
+```
+
+### 3. Create Conversation
 ```bash
 # Create a group conversation
 node scripts/nextcloud.js talk create --name "Project Team" --type group
@@ -64,12 +69,12 @@ node scripts/nextcloud.js talk create \
 - `public`: Publicly accessible conversation
 - `note-to-self`: Personal notes conversation
 
-### 3. Delete Conversation
+### 4. Delete Conversation
 ```bash
 node scripts/nextcloud.js talk delete --token ABC123
 ```
 
-### 4. List Messages
+### 5. List Messages
 ```bash
 # Get last 50 messages
 node scripts/nextcloud.js talk messages --token ABC123 --limit 50
@@ -78,7 +83,7 @@ node scripts/nextcloud.js talk messages --token ABC123 --limit 50
 node scripts/nextcloud.js talk messages --token ABC123 --look-into-future 1
 ```
 
-### 5. Send Message
+### 6. Send Message
 ```bash
 # Send a basic message
 node scripts/nextcloud.js talk send --token ABC123 --message "Hello team!"
@@ -87,7 +92,7 @@ node scripts/nextcloud.js talk send --token ABC123 --message "Hello team!"
 node scripts/nextcloud.js talk send --token ABC123 --message "Me too!" --reply-to 1567
 ```
 
-### 6. Edit Message
+### 7. Edit Message
 ```bash
 node scripts/nextcloud.js talk edit-message \
   --token ABC123 \
@@ -95,12 +100,12 @@ node scripts/nextcloud.js talk edit-message \
   --message "Updated message content"
 ```
 
-### 7. Delete Message
+### 8. Delete Message
 ```bash
 node scripts/nextcloud.js talk delete-message --token ABC123 --message-id 1567
 ```
 
-### 8. List Bots
+### 9. List Bots
 ```bash
 # List all bots on server
 node scripts/nextcloud.js talk list-bots
@@ -109,12 +114,12 @@ node scripts/nextcloud.js talk list-bots
 node scripts/nextcloud.js talk list-bots --token ABC123
 ```
 
-### 9. Enable Bot in Room
+### 10. Enable Bot in Room
 ```bash
 node scripts/nextcloud.js talk enable-bot --token ABC123 --bot-id 5
 ```
 
-### 10. Disable Bot in Room
+### 11. Disable Bot in Room
 ```bash
 node scripts/nextcloud.js talk disable-bot --token ABC123 --bot-id 5
 ```
