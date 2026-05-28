@@ -18688,6 +18688,26 @@ var Talk = {
     });
     return ensureArray(data.ocs.data);
   },
+  async addParticipant(token, user, source = "users") {
+    if (!token) throw new Error("Conversation token is required.");
+    if (!user) throw new Error("User is required.");
+    const payload = {
+      newParticipant: user,
+      source
+    };
+    const data = await request(
+      `/ocs/v2.php/apps/spreed/api/v4/room/${token}/participants`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json"
+        },
+        body: JSON.stringify(payload)
+      }
+    );
+    return data.ocs.data;
+  },
   async enableBotInConversation(token, botId) {
     if (!token) throw new Error("Conversation token is required.");
     if (!botId) throw new Error("Bot ID is required.");
@@ -19391,6 +19411,16 @@ async function main() {
             args[messageIndex + 1]
           )
         );
+      } else if (subCommand === "add-participant") {
+        const tokenIndex = args.indexOf("--token");
+        if (tokenIndex === -1) throw new Error("Missing --token");
+        const userIndex = args.indexOf("--user");
+        if (userIndex === -1) throw new Error("Missing --user");
+        const token = args[tokenIndex + 1];
+        const user = args[userIndex + 1];
+        const sourceIndex = args.indexOf("--source");
+        const source = sourceIndex !== -1 ? args[sourceIndex + 1] : "users";
+        output(await Talk.addParticipant(token, user, source));
       } else if (subCommand === "enable-bot") {
         const tokenIndex = args.indexOf("--token");
         if (tokenIndex === -1) throw new Error("Missing --token");
