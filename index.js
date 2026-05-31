@@ -1223,6 +1223,98 @@ const Shares = {
     return { ...this._normalize(s), passwordProtected: !!password };
   },
 
+  async createUserShare({
+    path,
+    user,
+    permissions = "read",
+    expireDate = null,
+  }) {
+    if (!path) throw new Error("Missing path for share");
+    if (!user) throw new Error("Missing user to share with");
+
+    const cleanPath = path.startsWith("/") ? path : `/${path}`;
+
+    const permMap = {
+      read: 1, // read only
+      edit: 15, // read + write + delete
+      delete: 31, // read + write + delete + share
+    };
+    const perms = permMap[permissions];
+    if (perms === undefined) {
+      throw new Error(
+        `Unknown --permissions '${permissions}'. Use 'read', 'edit', or 'delete'.`,
+      );
+    }
+
+    const body = new URLSearchParams({
+      path: cleanPath,
+      shareType: "0", // user share
+      shareWith: user,
+      permissions: String(perms),
+    });
+    if (expireDate) body.set("expireDate", expireDate);
+
+    const envelope = await request(
+      "/ocs/v2.php/apps/files_sharing/api/v1/shares",
+      {
+        method: "POST",
+        headers: {
+          ...this._ocsHeaders,
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: body.toString(),
+      },
+    );
+    const s = this._unwrap(envelope);
+    return this._normalize(s);
+  },
+
+  async createGroupShare({
+    path,
+    group,
+    permissions = "read",
+    expireDate = null,
+  }) {
+    if (!path) throw new Error("Missing path for share");
+    if (!group) throw new Error("Missing group to share with");
+
+    const cleanPath = path.startsWith("/") ? path : `/${path}`;
+
+    const permMap = {
+      read: 1, // read only
+      edit: 15, // read + write + delete
+      delete: 31, // read + write + delete + share
+    };
+    const perms = permMap[permissions];
+    if (perms === undefined) {
+      throw new Error(
+        `Unknown --permissions '${permissions}'. Use 'read', 'edit', or 'delete'.`,
+      );
+    }
+
+    const body = new URLSearchParams({
+      path: cleanPath,
+      shareType: "1", // group share
+      shareWith: group,
+      permissions: String(perms),
+    });
+    if (expireDate) body.set("expireDate", expireDate);
+
+    const envelope = await request(
+      "/ocs/v2.php/apps/files_sharing/api/v1/shares",
+      {
+        method: "POST",
+        headers: {
+          ...this._ocsHeaders,
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: body.toString(),
+      },
+    );
+    const s = this._unwrap(envelope);
+    return this._normalize(s);
+  },
+
   async delete({ id }) {
     if (!id) throw new Error("Missing share id");
     const envelope = await request(
@@ -2180,6 +2272,52 @@ async function main() {
         const pathIndex = args.indexOf("--path");
         const sharePath = pathIndex !== -1 ? args[pathIndex + 1] : null;
         output(await Shares.list({ path: sharePath }));
+      } else if (subCommand === "create-user") {
+        const pathIndex = args.indexOf("--path");
+        if (pathIndex === -1) throw new Error("Missing --path");
+        const sharePath = args[pathIndex + 1];
+
+        const userIndex = args.indexOf("--user");
+        if (userIndex === -1) throw new Error("Missing --user");
+        const shareUser = args[userIndex + 1];
+
+        const permIndex = args.indexOf("--permissions");
+        const permissions = permIndex !== -1 ? args[permIndex + 1] : "read";
+
+        const expIndex = args.indexOf("--expire");
+        const expireDate = expIndex !== -1 ? args[expIndex + 1] : null;
+
+        output(
+          await Shares.createUserShare({
+            path: sharePath,
+            user: shareUser,
+            permissions,
+            expireDate,
+          }),
+        );
+      } else if (subCommand === "create-group") {
+        const pathIndex = args.indexOf("--path");
+        if (pathIndex === -1) throw new Error("Missing --path");
+        const sharePath = args[pathIndex + 1];
+
+        const groupIndex = args.indexOf("--group");
+        if (groupIndex === -1) throw new Error("Missing --group");
+        const shareGroup = args[groupIndex + 1];
+
+        const permIndex = args.indexOf("--permissions");
+        const permissions = permIndex !== -1 ? args[permIndex + 1] : "read";
+
+        const expIndex = args.indexOf("--expire");
+        const expireDate = expIndex !== -1 ? args[expIndex + 1] : null;
+
+        output(
+          await Shares.createGroupShare({
+            path: sharePath,
+            group: shareGroup,
+            permissions,
+            expireDate,
+          }),
+        );
       } else if (subCommand === "delete") {
         const idIndex = args.indexOf("--id");
         if (idIndex === -1) throw new Error("Missing --id");
