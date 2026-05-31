@@ -28,7 +28,7 @@ metadata:
   credential-scope: nextcloud-account-full
   network-egress: ${NEXTCLOUD_URL}
   has-destructive-operations: "true"
-  destructive-operations: notes:delete,files:delete,files:upload,tasks:delete,calendar:delete,contacts:delete,talk:delete,talk:delete-message,shares:create-link,shares:delete
+  destructive-operations: notes:delete,files:delete,files:upload,tasks:delete,calendar:delete,contacts:delete,talk:delete,talk:delete-message,shares:create-link,shares:delete,shares:create-user,shares:create-group
 ---
 
 # OpenClaw Nextcloud Skill
@@ -69,6 +69,7 @@ Before invoking any of the commands below, confirm with the user — even if the
 | `shares delete --id <id>` | Revokes a public share link. |
 | `shares create-link --permissions edit ...` | Publishes a public link with **write access** to the file or folder. Anyone with the link can modify or delete the resource. Default to `--permissions read` unless the user has explicitly asked for an editable share, and read the path back to them before creating it. |
 | `shares create-link` (any) | Even read-only public links expose data to anyone with the URL. Confirm the path and consider `--password` and `--expire`. |
+| `shares create-user` or `shares create-group` | Shares files/folders with other users or groups in your Nextcloud instance. User/group shares don't produce a public URL but grant access to specified users/groups. |
 | `notes edit`, `tasks edit`, `calendar edit`, `contacts edit` | Overwrites existing fields. Read back what you intend to change before sending. |
 | `files upload --path <path>` | Will overwrite an existing file at that path silently and will create any missing parent directories along the way. Verify the path. |
 
@@ -144,12 +145,16 @@ node scripts/nextcloud.js <command> <subcommand> [options]
 
 File listings and search results include a `fileId` (when the server returns one) and a synthesized `internalLink` of the form `<NEXTCLOUD_URL>/index.php/f/<fileId>` that opens the file in the Nextcloud web UI.
 
-### Shares (public links)
+### Shares (public links and user/group shares)
 - `shares list [--path <path>]`
 - `shares create-link --path <path> [--permissions read|edit] [--password <pw>] [--expire <YYYY-MM-DD>]`
+- `shares create-user --path <path> --user <name> [--permissions read|edit|delete] [--expire <YYYY-MM-DD>]`
+- `shares create-group --path <path> --group <name> [--permissions read|edit|delete] [--expire <YYYY-MM-DD>]`
 - `shares delete --id <id>`
 
-`--permissions read` (default) maps to Nextcloud permission `1` (read-only); `--permissions edit` maps to `15` (create+read+update+delete).
+**Public link permissions:** `--permissions read` (default) maps to Nextcloud permission `1` (read-only); `--permissions edit` maps to `15` (create+read+update+delete).
+
+**User/group share permissions:** `--permissions read` (`1`), `--permissions edit` (`15`), or `--permissions delete` (`31` = read+write+delete+share).
 
 ### Contacts
 - `contacts list [--addressbook <ab>]`
