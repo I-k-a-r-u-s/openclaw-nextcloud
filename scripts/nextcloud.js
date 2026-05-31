@@ -18107,6 +18107,43 @@ var CalDAV = {
     }
     return allEvents;
   },
+  async getCalendarColor(calendarUrl) {
+    if (!calendarUrl) throw new Error("Calendar URL is required.");
+    const response = await request(calendarUrl, {
+      method: "PROPFIND",
+      headers: { Depth: "0" },
+      body: `<?xml version="1.0"?>
+<D:propfind xmlns:D="DAV:">
+  <D:prop>
+    <cal:calendar-color xmlns:cal="urn:ietf:params:xml:ns:calendar-server" />
+  </D:prop>
+</D:propfind>`
+    });
+    if (!response["d:multistatus"] || !response["d:multistatus"]["d:response"]) {
+      throw new Error("Could not retrieve calendar color");
+    }
+    const responses = ensureArray(response["d:multistatus"]["d:response"]);
+    const props = responses[0]?.["d:propstat"]?.[0]?.["d:prop"];
+    return props?.["cal:calendar-color"] || "#000000";
+  },
+  async setCalendarColor(calendarUrl, color) {
+    if (!calendarUrl) throw new Error("Calendar URL is required.");
+    if (!color) throw new Error("Color is required (format: #RRGGBB)");
+    const body = `<?xml version="1.0"?>
+<D:propertyupdate xmlns:D="DAV:" xmlns:cal="urn:ietf:params:xml:ns:calendar-server">
+  <D:set>
+    <D:prop>
+      <cal:calendar-color>${color}</cal:calendar-color>
+    </D:prop>
+  </D:set>
+</D:propertyupdate>`;
+    await request(calendarUrl, {
+      method: "PROPPATCH",
+      headers: { "Content-Type": "application/xml; charset=utf-8" },
+      body
+    });
+    return { calendarUrl, color, status: "updated" };
+  },
   async getTodos(calendarName = null) {
     let calendars = await this.findCalendars("VTODO");
     if (calendarName) {
@@ -19435,6 +19472,21 @@ async function main() {
         const calIndex = args.indexOf("--calendar");
         const calendar = calIndex !== -1 ? args[calIndex + 1] : null;
         output(await CalDAV.deleteEvent(uid, calendar));
+      } else if (subCommand === "get-color") {
+        const calIndex = args.indexOf("--calendar");
+        const calendarName = calIndex !== -1 ? args[calIndex + 1] : null;
+        const calendar = await CalDAV.getCalendar("VEVENT", calendarName);
+        const color = await CalDAV.getCalendarColor(calendar.url);
+        output(color);
+      } else if (subCommand === "set-color") {
+        const calIndex = args.indexOf("--calendar");
+        const calendarName = calIndex !== -1 ? args[calIndex + 1] : null;
+        const colorIndex = args.indexOf("--color");
+        if (colorIndex === -1) throw new Error("Missing --color");
+        const color = args[colorIndex + 1];
+        const calendar = await CalDAV.getCalendar("VEVENT", calendarName);
+        const result = await CalDAV.setCalendarColor(calendar.url, color);
+        output(result);
       } else {
         throw new Error("Unknown calendar command");
       }
@@ -19495,6 +19547,21 @@ async function main() {
         const calIndex = args.indexOf("--calendar");
         const calendar = calIndex !== -1 ? args[calIndex + 1] : null;
         output(await CalDAV.completeTask(uid, calendar));
+      } else if (subCommand === "get-color") {
+        const calIndex = args.indexOf("--calendar");
+        const calendarName = calIndex !== -1 ? args[calIndex + 1] : null;
+        const calendar = await CalDAV.getCalendar("VTODO", calendarName);
+        const color = await CalDAV.getCalendarColor(calendar.url);
+        output(color);
+      } else if (subCommand === "set-color") {
+        const calIndex = args.indexOf("--calendar");
+        const calendarName = calIndex !== -1 ? args[calIndex + 1] : null;
+        const colorIndex = args.indexOf("--color");
+        if (colorIndex === -1) throw new Error("Missing --color");
+        const color = args[colorIndex + 1];
+        const calendar = await CalDAV.getCalendar("VTODO", calendarName);
+        const result = await CalDAV.setCalendarColor(calendar.url, color);
+        output(result);
       } else {
         throw new Error("Unknown tasks command");
       }
