@@ -2346,11 +2346,15 @@ async function main() {
         const inviteIndex = args.indexOf("--invite");
         const invite = inviteIndex !== -1 ? args[inviteIndex + 1] : null;
 
+        const options = {};
+        if (description) options.description = description;
+        if (password) options.password = password;
+
         const result = await Talk.createConversation(
           roomName,
           roomType,
           invite,
-          description ? { description } : {},
+          options,
         );
         output(result);
       } else if (subCommand === "delete") {
