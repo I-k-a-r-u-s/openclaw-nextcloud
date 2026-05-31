@@ -19065,6 +19065,52 @@ var Talk = {
       { headers: { Accept: "application/json" } }
     );
     return data.ocs?.data || {};
+  },
+  async getSettings(token) {
+    if (!token) throw new Error("Conversation token is required.");
+    const data = await request(
+      `/ocs/v2.php/apps/spreed/api/v4/settings/conversation/${token}`,
+      { headers: { Accept: "application/json" } }
+    );
+    return data.ocs?.data || {};
+  },
+  async updateSettings(token, settings) {
+    if (!token) throw new Error("Conversation token is required.");
+    if (!settings || typeof settings !== "object") {
+      throw new Error("Settings object is required.");
+    }
+    const data = await request(
+      `/ocs/v2.php/apps/spreed/api/v4/settings/conversation/${token}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(settings)
+      }
+    );
+    return data.ocs?.data || {};
+  },
+  async getGuestSettings(token) {
+    if (!token) throw new Error("Conversation token is required.");
+    const data = await request(
+      `/ocs/v2.php/apps/spreed/api/v4/settings/guest/${token}`,
+      { headers: { Accept: "application/json" } }
+    );
+    return data.ocs?.data || {};
+  },
+  async updateGuestSettings(token, settings) {
+    if (!token) throw new Error("Conversation token is required.");
+    if (!settings || typeof settings !== "object") {
+      throw new Error("Settings object is required.");
+    }
+    const data = await request(
+      `/ocs/v2.php/apps/spreed/api/v4/settings/guest/${token}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(settings)
+      }
+    );
+    return data.ocs?.data || {};
   }
 };
 var Contacts = {
@@ -20028,6 +20074,58 @@ async function main() {
         const tokenIndex = args.indexOf("--token");
         const token = tokenIndex !== -1 ? args[tokenIndex + 1] : null;
         output(await Talk.listBots(token));
+      } else if (subCommand === "get-settings") {
+        const tokenIndex = args.indexOf("--token");
+        if (tokenIndex === -1) throw new Error("Missing --token");
+        output(await Talk.getSettings(args[tokenIndex + 1]));
+      } else if (subCommand === "update-settings") {
+        const tokenIndex = args.indexOf("--token");
+        if (tokenIndex === -1) throw new Error("Missing --token");
+        const token = args[tokenIndex + 1];
+        const settings = {};
+        const mutedIndex = args.indexOf("--muted");
+        if (mutedIndex !== -1) settings.muted = args[mutedIndex + 1] === "1";
+        const notificationLevelIndex = args.indexOf("--notification-level");
+        if (notificationLevelIndex !== -1)
+          settings.notificationLevel = args[notificationLevelIndex + 1];
+        const readOnlyIndex = args.indexOf("--read-only");
+        if (readOnlyIndex !== -1)
+          settings.readOnly = args[readOnlyIndex + 1] === "1";
+        const listableIndex = args.indexOf("--listable");
+        if (listableIndex !== -1)
+          settings.listable = args[listableIndex + 1] === "1";
+        const favoriteIndex = args.indexOf("--favorite");
+        if (favoriteIndex !== -1)
+          settings.favorite = args[favoriteIndex + 1] === "1";
+        const passwordIndex = args.indexOf("--password");
+        if (passwordIndex !== -1) settings.password = args[passwordIndex + 1];
+        output(await Talk.updateSettings(token, settings));
+      } else if (subCommand === "get-guest-settings") {
+        const tokenIndex = args.indexOf("--token");
+        if (tokenIndex === -1) throw new Error("Missing --token");
+        output(await Talk.getGuestSettings(args[tokenIndex + 1]));
+      } else if (subCommand === "update-guest-settings") {
+        const tokenIndex = args.indexOf("--token");
+        if (tokenIndex === -1) throw new Error("Missing --token");
+        const token = args[tokenIndex + 1];
+        const settings = {};
+        const mutedIndex = args.indexOf("--muted");
+        if (mutedIndex !== -1) settings.muted = args[mutedIndex + 1] === "1";
+        const notificationLevelIndex = args.indexOf("--notification-level");
+        if (notificationLevelIndex !== -1)
+          settings.notificationLevel = args[notificationLevelIndex + 1];
+        const readOnlyIndex = args.indexOf("--read-only");
+        if (readOnlyIndex !== -1)
+          settings.readOnly = args[readOnlyIndex + 1] === "1";
+        const listableIndex = args.indexOf("--listable");
+        if (listableIndex !== -1)
+          settings.listable = args[listableIndex + 1] === "1";
+        const favoriteIndex = args.indexOf("--favorite");
+        if (favoriteIndex !== -1)
+          settings.favorite = args[favoriteIndex + 1] === "1";
+        const passwordIndex = args.indexOf("--password");
+        if (passwordIndex !== -1) settings.password = args[passwordIndex + 1];
+        output(await Talk.updateGuestSettings(token, settings));
       } else {
         throw new Error("Unknown talk command");
       }
