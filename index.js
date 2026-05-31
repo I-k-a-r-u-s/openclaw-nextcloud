@@ -1594,6 +1594,74 @@ const Talk = {
 
     return data.ocs?.data || [];
   },
+
+  async createPoll(token, question, options) {
+    if (!token) throw new Error("Conversation token is required.");
+    if (!question) throw new Error("Poll question is required.");
+    if (!options || !Array.isArray(options) || options.length === 0) {
+      throw new Error("Poll options are required (at least one option).");
+    }
+
+    const data = await request("/ocs/v2.php/apps/spreed/api/v4/poll", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        conversationId: token,
+        question: question,
+        options: options,
+      }),
+    });
+
+    return data.ocs?.data || {};
+  },
+
+  async getPoll(token, pollId) {
+    if (!token) throw new Error("Conversation token is required.");
+    if (!pollId) throw new Error("Poll ID is required.");
+
+    const data = await request(
+      `/ocs/v2.php/apps/spreed/api/v4/poll/${pollId}?conversationId=${token}`,
+      { headers: { Accept: "application/json" } },
+    );
+
+    return data.ocs?.data || {};
+  },
+
+  async closePoll(token, pollId) {
+    if (!token) throw new Error("Conversation token is required.");
+    if (!pollId) throw new Error("Poll ID is required.");
+
+    await request(
+      `/ocs/v2.php/apps/spreed/api/v4/poll/${pollId}?conversationId=${token}`,
+      { method: "DELETE" },
+    );
+
+    return { token, pollId, status: "closed" };
+  },
+
+  async publishPoll(token, pollId) {
+    if (!token) throw new Error("Conversation token is required.");
+    if (!pollId) throw new Error("Poll ID is required.");
+
+    const data = await request(
+      `/ocs/v2.php/apps/spreed/api/v4/poll/${pollId}/publish?conversationId=${token}`,
+      { method: "POST", headers: { "Content-Type": "application/json" } },
+    );
+
+    return data.ocs?.data || {};
+  },
+
+  async getPollResults(token, pollId) {
+    if (!token) throw new Error("Conversation token is required.");
+    if (!pollId) throw new Error("Poll ID is required.");
+
+    const data = await request(
+      `/ocs/v2.php/apps/spreed/api/v4/poll/${pollId}/results?conversationId=${token}`,
+      { headers: { Accept: "application/json" } },
+    );
+
+    return data.ocs?.data || {};
+  },
 };
 
 // 5. Contacts (CardDAV)
@@ -2566,6 +2634,61 @@ async function main() {
           await Talk.listReactions(
             args[tokenIndex + 1],
             parseInt(args[messageIdIndex + 1], 10),
+          ),
+        );
+      } else if (subCommand === "create-poll") {
+        const tokenIndex = args.indexOf("--token");
+        if (tokenIndex === -1) throw new Error("Missing --token");
+        const questionIndex = args.indexOf("--question");
+        if (questionIndex === -1) throw new Error("Missing --question");
+        const optionsIndex = args.indexOf("--options");
+        if (optionsIndex === -1) throw new Error("Missing --options");
+
+        const optionsStr = args[optionsIndex + 1];
+        const options = optionsStr.split(",").map((opt) => opt.trim());
+
+        output(
+          await Talk.createPoll(
+            args[tokenIndex + 1],
+            args[questionIndex + 1],
+            options,
+          ),
+        );
+      } else if (subCommand === "get-poll") {
+        const tokenIndex = args.indexOf("--token");
+        if (tokenIndex === -1) throw new Error("Missing --token");
+        const pollIdIndex = args.indexOf("--poll-id");
+        if (pollIdIndex === -1) throw new Error("Missing --poll-id");
+
+        output(await Talk.getPoll(args[tokenIndex + 1], args[pollIdIndex + 1]));
+      } else if (subCommand === "close-poll") {
+        const tokenIndex = args.indexOf("--token");
+        if (tokenIndex === -1) throw new Error("Missing --token");
+        const pollIdIndex = args.indexOf("--poll-id");
+        if (pollIdIndex === -1) throw new Error("Missing --poll-id");
+
+        output(
+          await Talk.closePoll(args[tokenIndex + 1], args[pollIdIndex + 1]),
+        );
+      } else if (subCommand === "publish-poll") {
+        const tokenIndex = args.indexOf("--token");
+        if (tokenIndex === -1) throw new Error("Missing --token");
+        const pollIdIndex = args.indexOf("--poll-id");
+        if (pollIdIndex === -1) throw new Error("Missing --poll-id");
+
+        output(
+          await Talk.publishPoll(args[tokenIndex + 1], args[pollIdIndex + 1]),
+        );
+      } else if (subCommand === "get-poll-results") {
+        const tokenIndex = args.indexOf("--token");
+        if (tokenIndex === -1) throw new Error("Missing --token");
+        const pollIdIndex = args.indexOf("--poll-id");
+        if (pollIdIndex === -1) throw new Error("Missing --poll-id");
+
+        output(
+          await Talk.getPollResults(
+            args[tokenIndex + 1],
+            args[pollIdIndex + 1],
           ),
         );
       } else if (subCommand === "list-bots") {
