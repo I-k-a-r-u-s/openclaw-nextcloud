@@ -19087,21 +19087,37 @@ var Contacts = {
       const match = vcard.match(regex);
       return match ? cleanValue(match[1]) : null;
     };
+    const getFieldWithTypes = (field) => {
+      const regex = new RegExp(`^${field}([^:\\n]*):([^\\n]*)`, "gm");
+      const matches = [];
+      let match;
+      while ((match = regex.exec(vcard)) !== null) {
+        const types = match[1].toUpperCase().split(";");
+        const value = cleanValue(match[2]);
+        matches.push({ types, value });
+      }
+      return matches.length > 0 ? matches : null;
+    };
     const uid = getField("UID");
     const fn = getField("FN");
     const n = getField("N");
-    const phones = [];
-    const phoneRegex = /^TEL(?:;[^:]*)?:(.*)$/gim;
-    let phoneMatch;
-    while ((phoneMatch = phoneRegex.exec(vcard)) !== null) {
-      phones.push(cleanValue(phoneMatch[1]));
-    }
-    const emails = [];
-    const emailRegex = /^EMAIL(?:;[^:]*)?:(.*)$/gim;
-    let emailMatch;
-    while ((emailMatch = emailRegex.exec(vcard)) !== null) {
-      emails.push(cleanValue(emailMatch[1]));
-    }
+    const bday = getField("BDAY");
+    const anniversary = getField("ANNIVERSARY");
+    const url = getField("URL");
+    const role = getField("ROLE");
+    const phones = getFieldWithTypes("TEL");
+    const emails = getFieldWithTypes("EMAIL");
+    const addresses = getFieldWithTypes("ADR");
+    const parsedAddresses = addresses?.map((addr) => ({
+      types: addr.types,
+      // ADR format: POBox;Ext;Street;City;Region;PostalCode;Country
+      value: addr.value,
+      street: addr.value?.split(";")[2] || null,
+      city: addr.value?.split(";")[3] || null,
+      region: addr.value?.split(";")[4] || null,
+      postalCode: addr.value?.split(";")[5] || null,
+      country: addr.value?.split(";")[6] || null
+    }));
     const org = getField("ORG");
     const title = getField("TITLE");
     const note = getField("NOTE");
@@ -19109,8 +19125,13 @@ var Contacts = {
       uid,
       fullName: fn,
       name: n,
-      phones: phones.length > 0 ? phones : null,
-      emails: emails.length > 0 ? emails : null,
+      bday,
+      anniversary,
+      url,
+      role,
+      phones,
+      emails,
+      addresses: parsedAddresses,
       organization: org,
       title,
       note
@@ -19191,16 +19212,35 @@ FN:${fullName}
       vcard += `N:${fullName};;;;
 `;
     }
-    if (options.email) vcard += `EMAIL:${options.email}
+    if (options.email) {
+      const emailType = options.emailType ? `;${options.emailType}` : "";
+      vcard += `EMAIL${emailType}:${options.email}
 `;
-    if (options.phone) vcard += `TEL:${options.phone}
+    }
+    if (options.phone) {
+      const phoneType = options.phoneType ? `;${options.phoneType}` : "";
+      vcard += `TEL${phoneType}:${options.phone}
 `;
+    }
     if (options.organization) vcard += `ORG:${options.organization}
 `;
     if (options.title) vcard += `TITLE:${options.title}
 `;
     if (options.note) vcard += `NOTE:${options.note}
 `;
+    if (options.bday) vcard += `BDAY:${options.bday}
+`;
+    if (options.anniversary) vcard += `ANNIVERSARY:${options.anniversary}
+`;
+    if (options.url) vcard += `URL:${options.url}
+`;
+    if (options.role) vcard += `ROLE:${options.role}
+`;
+    if (options.address) {
+      const addrParts = options.address.split("|");
+      vcard += `ADR:;;${addrParts.join(";")}
+`;
+    }
     vcard += `END:VCARD`;
     const filename = `${uid}.vcf`;
     const urlWithSlash = ab.url.endsWith("/") ? ab.url : ab.url + "/";
@@ -19911,14 +19951,29 @@ async function main() {
         const options = {};
         const emailIndex = args.indexOf("--email");
         if (emailIndex !== -1) options.email = args[emailIndex + 1];
+        const emailTypeIndex = args.indexOf("--email-type");
+        if (emailTypeIndex !== -1) options.emailType = args[emailTypeIndex + 1];
         const phoneIndex = args.indexOf("--phone");
         if (phoneIndex !== -1) options.phone = args[phoneIndex + 1];
+        const phoneTypeIndex = args.indexOf("--phone-type");
+        if (phoneTypeIndex !== -1) options.phoneType = args[phoneTypeIndex + 1];
         const orgIndex = args.indexOf("--organization");
         if (orgIndex !== -1) options.organization = args[orgIndex + 1];
         const titleIndex = args.indexOf("--title");
         if (titleIndex !== -1) options.title = args[titleIndex + 1];
         const noteIndex = args.indexOf("--note");
         if (noteIndex !== -1) options.note = args[noteIndex + 1];
+        const bdayIndex = args.indexOf("--bday");
+        if (bdayIndex !== -1) options.bday = args[bdayIndex + 1];
+        const anniversaryIndex = args.indexOf("--anniversary");
+        if (anniversaryIndex !== -1)
+          options.anniversary = args[anniversaryIndex + 1];
+        const urlIndex = args.indexOf("--url");
+        if (urlIndex !== -1) options.url = args[urlIndex + 1];
+        const roleIndex = args.indexOf("--role");
+        if (roleIndex !== -1) options.role = args[roleIndex + 1];
+        const addressIndex = args.indexOf("--address");
+        if (addressIndex !== -1) options.address = args[addressIndex + 1];
         output(await Contacts.create(fullName, addressBook, options));
       } else if (subCommand === "edit") {
         const uidIndex = args.indexOf("--uid");
@@ -19939,6 +19994,17 @@ async function main() {
         if (titleIndex !== -1) updates.title = args[titleIndex + 1];
         const noteIndex = args.indexOf("--note");
         if (noteIndex !== -1) updates.note = args[noteIndex + 1];
+        const bdayIndex = args.indexOf("--bday");
+        if (bdayIndex !== -1) updates.bday = args[bdayIndex + 1];
+        const anniversaryIndex = args.indexOf("--anniversary");
+        if (anniversaryIndex !== -1)
+          updates.anniversary = args[anniversaryIndex + 1];
+        const urlIndex = args.indexOf("--url");
+        if (urlIndex !== -1) updates.url = args[urlIndex + 1];
+        const roleIndex = args.indexOf("--role");
+        if (roleIndex !== -1) updates.role = args[roleIndex + 1];
+        const addressIndex = args.indexOf("--address");
+        if (addressIndex !== -1) updates.address = args[addressIndex + 1];
         output(await Contacts.update(uid, addressBook, updates));
       } else if (subCommand === "delete") {
         const uidIndex = args.indexOf("--uid");
