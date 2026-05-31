@@ -17849,6 +17849,85 @@ var Notes = {
       }
     });
     return { success: true, id };
+  },
+  async listCategories() {
+    try {
+      const data = await request("/index.php/apps/notes/api/v1/categories", {
+        headers: { Accept: "application/json" }
+      });
+      return data.ocs?.data || [];
+    } catch (e) {
+      if (e.message.includes("404")) {
+        return {
+          error: "Categories API not available in this Nextcloud version"
+        };
+      }
+      throw e;
+    }
+  },
+  async createCategory(name) {
+    const data = await request("/index.php/apps/notes/api/v1/categories", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json"
+      },
+      body: JSON.stringify({ category: name })
+    });
+    return data.ocs?.data || { name };
+  },
+  async deleteCategory(name) {
+    try {
+      await request(
+        `/index.php/apps/notes/api/v1/categories/${encodeURIComponent(name)}`,
+        {
+          method: "DELETE",
+          headers: { Accept: "application/json" }
+        }
+      );
+      return { success: true, name };
+    } catch (e) {
+      if (e.message.includes("404")) {
+        return {
+          error: "Categories API not available in this Nextcloud version"
+        };
+      }
+      throw e;
+    }
+  },
+  async getNoteHistory(id) {
+    try {
+      const data = await request(
+        `/index.php/apps/notes/api/v1/notes/${id}/history`,
+        {
+          headers: { Accept: "application/json" }
+        }
+      );
+      return data.ocs?.data || [];
+    } catch (e) {
+      if (e.message.includes("404")) {
+        return {
+          error: "Note history API not available in this Nextcloud version"
+        };
+      }
+      throw e;
+    }
+  },
+  async getBackup() {
+    try {
+      const data = await request(
+        "/index.php/apps/notes/api/v1/notes?format=backup",
+        {
+          headers: { Accept: "application/json" }
+        }
+      );
+      return data.ocs?.data || [];
+    } catch (e) {
+      if (e.message.includes("404")) {
+        return { error: "Backup API not available in this Nextcloud version" };
+      }
+      throw e;
+    }
   }
 };
 var Files = {
@@ -19420,6 +19499,36 @@ async function main() {
         if (idIndex === -1) throw new Error("Missing --id");
         const result = await Notes.delete(args[idIndex + 1]);
         output(result);
+      } else if (subCommand === "list-categories") {
+        const result = await Notes.listCategories();
+        output(result);
+      } else if (subCommand === "create-category") {
+        const nameIndex = args.indexOf("--name");
+        if (nameIndex === -1) throw new Error("Missing --name");
+        const result = await Notes.createCategory(args[nameIndex + 1]);
+        output(result);
+      } else if (subCommand === "delete-category") {
+        const nameIndex = args.indexOf("--name");
+        if (nameIndex === -1) throw new Error("Missing --name");
+        const result = await Notes.deleteCategory(args[nameIndex + 1]);
+        output(result);
+      } else if (subCommand === "history") {
+        const idIndex = args.indexOf("--id");
+        if (idIndex === -1) throw new Error("Missing --id");
+        const result = await Notes.getNoteHistory(args[idIndex + 1]);
+        output(result);
+      } else if (subCommand === "backup") {
+        const outputIndex = args.indexOf("--output");
+        const backup = await Notes.getBackup();
+        if (outputIndex !== -1) {
+          const fs2 = await import("fs");
+          const path = await import("path");
+          const outputPath = args[outputIndex + 1];
+          fs2.writeFileSync(outputPath, JSON.stringify(backup, null, 2));
+          output({ status: "backup-written", path: outputPath });
+        } else {
+          output(backup);
+        }
       } else {
         throw new Error("Unknown notes command");
       }
