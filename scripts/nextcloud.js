@@ -18859,6 +18859,43 @@ var Talk = {
       fileId,
       message: "File uploaded to Talk folder. It should appear in the conversation."
     };
+  },
+  async addReaction(token, messageId, emoji) {
+    if (!token) throw new Error("Conversation token is required.");
+    if (!messageId) throw new Error("Message ID is required.");
+    if (!emoji) throw new Error("Emoji is required.");
+    await request(
+      `/ocs/v2.php/apps/spreed/api/v1/chat/${token}/message/${messageId}/reaction/${encodeURIComponent(emoji)}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" }
+      }
+    );
+    return { token, messageId, emoji, status: "added" };
+  },
+  async deleteReaction(token, messageId, emoji) {
+    if (!token) throw new Error("Conversation token is required.");
+    if (!messageId) throw new Error("Message ID is required.");
+    if (!emoji) throw new Error("Emoji is required.");
+    await request(
+      `/ocs/v2.php/apps/spreed/api/v1/chat/${token}/message/${messageId}/reaction/${encodeURIComponent(emoji)}`,
+      {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" }
+      }
+    );
+    return { token, messageId, emoji, status: "removed" };
+  },
+  async listReactions(token, messageId) {
+    if (!token) throw new Error("Conversation token is required.");
+    if (!messageId) throw new Error("Message ID is required.");
+    const data = await request(
+      `/ocs/v2.php/apps/spreed/api/v1/chat/${token}/message/${messageId}/reactions`,
+      {
+        headers: { Accept: "application/json" }
+      }
+    );
+    return data.ocs?.data || [];
   }
 };
 var Contacts = {
@@ -19628,6 +19665,45 @@ async function main() {
             args[tokenIndex + 1],
             args[fileIndex + 1],
             args[contentIndex + 1]
+          )
+        );
+      } else if (subCommand === "add-reaction") {
+        const tokenIndex = args.indexOf("--token");
+        if (tokenIndex === -1) throw new Error("Missing --token");
+        const messageIdIndex = args.indexOf("--message-id");
+        if (messageIdIndex === -1) throw new Error("Missing --message-id");
+        const emojiIndex = args.indexOf("--emoji");
+        if (emojiIndex === -1) throw new Error("Missing --emoji");
+        output(
+          await Talk.addReaction(
+            args[tokenIndex + 1],
+            parseInt(args[messageIdIndex + 1], 10),
+            args[emojiIndex + 1]
+          )
+        );
+      } else if (subCommand === "delete-reaction") {
+        const tokenIndex = args.indexOf("--token");
+        if (tokenIndex === -1) throw new Error("Missing --token");
+        const messageIdIndex = args.indexOf("--message-id");
+        if (messageIdIndex === -1) throw new Error("Missing --message-id");
+        const emojiIndex = args.indexOf("--emoji");
+        if (emojiIndex === -1) throw new Error("Missing --emoji");
+        output(
+          await Talk.deleteReaction(
+            args[tokenIndex + 1],
+            parseInt(args[messageIdIndex + 1], 10),
+            args[emojiIndex + 1]
+          )
+        );
+      } else if (subCommand === "list-reactions") {
+        const tokenIndex = args.indexOf("--token");
+        if (tokenIndex === -1) throw new Error("Missing --token");
+        const messageIdIndex = args.indexOf("--message-id");
+        if (messageIdIndex === -1) throw new Error("Missing --message-id");
+        output(
+          await Talk.listReactions(
+            args[tokenIndex + 1],
+            parseInt(args[messageIdIndex + 1], 10)
           )
         );
       } else if (subCommand === "list-bots") {
