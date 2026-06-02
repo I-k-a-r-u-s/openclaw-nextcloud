@@ -19012,7 +19012,9 @@ var Talk = {
         body: propfindBody
       });
       if (propResponse["d:multistatus"]?.["d:response"]) {
-        const responses = ensureArray(propResponse["d:multistatus"]["d:response"]);
+        const responses = ensureArray(
+          propResponse["d:multistatus"]["d:response"]
+        );
         const propstats = ensureArray(responses[0]?.["d:propstat"]);
         fileId = propstats[0]?.["d:prop"]?.["oc:fileid"] || "unknown";
       }
@@ -19028,7 +19030,10 @@ var Talk = {
             "Content-Type": "application/json",
             Accept: "application/json"
           },
-          body: JSON.stringify({ objectType: "file", objectId: String(fileId) })
+          body: JSON.stringify({
+            objectType: "file",
+            objectId: String(fileId)
+          })
         });
         shared = true;
       } catch (e) {
@@ -19135,48 +19140,56 @@ var Talk = {
   },
   async getSettings(token) {
     if (!token) throw new Error("Conversation token is required.");
-    const data = await request(
-      `/ocs/v2.php/apps/spreed/api/v4/settings/conversation/${token}`,
-      { headers: { Accept: "application/json" } }
-    );
-    return data.ocs?.data || {};
+    const data = await request(`/ocs/v2.php/apps/spreed/api/v4/room/${token}`, {
+      headers: { Accept: "application/json" }
+    });
+    const room = data.ocs?.data || {};
+    return {
+      muted: room.muted || false,
+      notificationLevel: room.notificationLevel || 0,
+      readOnly: room.readOnly || 0,
+      listable: room.listable || 0,
+      favorite: room.favorite || 0,
+      password: room.password !== null
+    };
   },
   async updateSettings(token, settings) {
     if (!token) throw new Error("Conversation token is required.");
     if (!settings || typeof settings !== "object") {
       throw new Error("Settings object is required.");
     }
-    const data = await request(
-      `/ocs/v2.php/apps/spreed/api/v4/settings/conversation/${token}`,
-      {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(settings)
-      }
-    );
+    const data = await request(`/ocs/v2.php/apps/spreed/api/v4/room/${token}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(settings)
+    });
     return data.ocs?.data || {};
   },
   async getGuestSettings(token) {
     if (!token) throw new Error("Conversation token is required.");
-    const data = await request(
-      `/ocs/v2.php/apps/spreed/api/v4/settings/guest/${token}`,
-      { headers: { Accept: "application/json" } }
-    );
-    return data.ocs?.data || {};
+    const data = await request(`/ocs/v2.php/apps/spreed/api/v4/room/${token}`, {
+      headers: { Accept: "application/json" }
+    });
+    const room = data.ocs?.data || {};
+    return {
+      muted: room.muted || false,
+      notificationLevel: room.notificationLevel || 0,
+      readOnly: room.readOnly || 0,
+      listable: room.listable || 0,
+      favorite: room.favorite || 0,
+      password: room.password !== null
+    };
   },
   async updateGuestSettings(token, settings) {
     if (!token) throw new Error("Conversation token is required.");
     if (!settings || typeof settings !== "object") {
       throw new Error("Settings object is required.");
     }
-    const data = await request(
-      `/ocs/v2.php/apps/spreed/api/v4/settings/guest/${token}`,
-      {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(settings)
-      }
-    );
+    const data = await request(`/ocs/v2.php/apps/spreed/api/v4/room/${token}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(settings)
+    });
     return data.ocs?.data || {};
   }
 };
