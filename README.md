@@ -220,13 +220,24 @@ node scripts/nextcloud.js talk list-bots
 node scripts/nextcloud.js talk enable-bot --token ABC123 --bot-id 5
 ```
 
-**Bot Setup Required:** For bot features, install a bot on your Nextcloud server first:
+**Bot Setup Required:** For bot features, install a bot on your Nextcloud server first (requires admin SSH access):
 
 ```bash
-./occ talk:bot:install --feature webhook --feature response "Bot Name" "shared-secret" "https://your-webhook.com" "Description"
+./occ talk:bot:install \
+  --feature webhook --feature response \
+  "OpenClaw Bot" "your-shared-secret-123" \
+  "https://your-webhook-endpoint.com/nextcloud" \
+  "Bot for OpenClaw AI assistant"
 ```
 
-See [TALK.md](TALK.md) for full documentation.
+Get the bot ID from the output or list existing bots:
+```bash
+./occ talk:bot:list
+```
+
+Optionally set `NEXTCLOUD_BOT_ID` in your environment to enable auto-enable behavior.
+
+**Permissions:** You need moderator/owner permissions to enable/disable bots in rooms. The bot's webhook URL must be reachable from your Nextcloud server.
 
 ## Output Format
 

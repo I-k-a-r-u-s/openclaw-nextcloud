@@ -3610,15 +3610,15 @@ var require_protectedTokens = __commonJS({
     function isProtectedWeekYearToken(token) {
       return protectedWeekYearTokens.indexOf(token) !== -1;
     }
-    function throwProtectedError(token, format2, input) {
+    function throwProtectedError(token, format, input) {
       if (token === "YYYY") {
-        throw new RangeError("Use `yyyy` instead of `YYYY` (in `".concat(format2, "`) for formatting years to the input `").concat(input, "`; see: https://github.com/date-fns/date-fns/blob/master/docs/unicodeTokens.md"));
+        throw new RangeError("Use `yyyy` instead of `YYYY` (in `".concat(format, "`) for formatting years to the input `").concat(input, "`; see: https://github.com/date-fns/date-fns/blob/master/docs/unicodeTokens.md"));
       } else if (token === "YY") {
-        throw new RangeError("Use `yy` instead of `YY` (in `".concat(format2, "`) for formatting years to the input `").concat(input, "`; see: https://github.com/date-fns/date-fns/blob/master/docs/unicodeTokens.md"));
+        throw new RangeError("Use `yy` instead of `YY` (in `".concat(format, "`) for formatting years to the input `").concat(input, "`; see: https://github.com/date-fns/date-fns/blob/master/docs/unicodeTokens.md"));
       } else if (token === "D") {
-        throw new RangeError("Use `d` instead of `D` (in `".concat(format2, "`) for formatting days of the month to the input `").concat(input, "`; see: https://github.com/date-fns/date-fns/blob/master/docs/unicodeTokens.md"));
+        throw new RangeError("Use `d` instead of `D` (in `".concat(format, "`) for formatting days of the month to the input `").concat(input, "`; see: https://github.com/date-fns/date-fns/blob/master/docs/unicodeTokens.md"));
       } else if (token === "DD") {
-        throw new RangeError("Use `dd` instead of `DD` (in `".concat(format2, "`) for formatting days of the month to the input `").concat(input, "`; see: https://github.com/date-fns/date-fns/blob/master/docs/unicodeTokens.md"));
+        throw new RangeError("Use `dd` instead of `DD` (in `".concat(format, "`) for formatting days of the month to the input `").concat(input, "`; see: https://github.com/date-fns/date-fns/blob/master/docs/unicodeTokens.md"));
       }
     }
   }
@@ -3732,8 +3732,8 @@ var require_buildFormatLongFn = __commonJS({
       return function() {
         var options = arguments.length > 0 && arguments[0] !== void 0 ? arguments[0] : {};
         var width = options.width ? String(options.width) : args.defaultWidth;
-        var format2 = args.formats[width] || args.formats[args.defaultWidth];
-        return format2;
+        var format = args.formats[width] || args.formats[args.defaultWidth];
+        return format;
       };
     }
     module.exports = exports2.default;
@@ -4237,7 +4237,7 @@ var require_format = __commonJS({
     Object.defineProperty(exports2, "__esModule", {
       value: true
     });
-    exports2.default = format2;
+    exports2.default = format;
     var _index = _interopRequireDefault(require_isValid());
     var _index2 = _interopRequireDefault(require_subMilliseconds());
     var _index3 = _interopRequireDefault(require_toDate());
@@ -4254,7 +4254,7 @@ var require_format = __commonJS({
     var escapedStringRegExp = /^'([^]*?)'?$/;
     var doubleQuoteRegExp = /''/g;
     var unescapedLatinCharacterRegExp = /[a-zA-Z]/;
-    function format2(dirtyDate, dirtyFormatStr, options) {
+    function format(dirtyDate, dirtyFormatStr, options) {
       var _ref, _options$locale, _ref2, _ref3, _ref4, _options$firstWeekCon, _options$locale2, _options$locale2$opti, _defaultOptions$local, _defaultOptions$local2, _ref5, _ref6, _ref7, _options$weekStartsOn, _options$locale3, _options$locale3$opti, _defaultOptions$local3, _defaultOptions$local4;
       (0, _index9.default)(2, arguments);
       var formatStr = String(dirtyFormatStr);
@@ -4642,13 +4642,13 @@ var require_formatDuration = __commonJS({
       }
       var defaultOptions3 = (0, _index.getDefaultOptions)();
       var locale = (_ref = (_options$locale = options === null || options === void 0 ? void 0 : options.locale) !== null && _options$locale !== void 0 ? _options$locale : defaultOptions3.locale) !== null && _ref !== void 0 ? _ref : _index2.default;
-      var format2 = (_options$format = options === null || options === void 0 ? void 0 : options.format) !== null && _options$format !== void 0 ? _options$format : defaultFormat;
+      var format = (_options$format = options === null || options === void 0 ? void 0 : options.format) !== null && _options$format !== void 0 ? _options$format : defaultFormat;
       var zero = (_options$zero = options === null || options === void 0 ? void 0 : options.zero) !== null && _options$zero !== void 0 ? _options$zero : false;
       var delimiter = (_options$delimiter = options === null || options === void 0 ? void 0 : options.delimiter) !== null && _options$delimiter !== void 0 ? _options$delimiter : " ";
       if (!locale.formatDistance) {
         return "";
       }
-      var result = format2.reduce(function(acc, unit) {
+      var result = format.reduce(function(acc, unit) {
         var token = "x".concat(unit.replace(/(^.)/, function(m) {
           return m.toUpperCase();
         }));
@@ -4683,9 +4683,9 @@ var require_formatISO = __commonJS({
       if (isNaN(originalDate.getTime())) {
         throw new RangeError("Invalid time value");
       }
-      var format2 = String((_options$format = options === null || options === void 0 ? void 0 : options.format) !== null && _options$format !== void 0 ? _options$format : "extended");
+      var format = String((_options$format = options === null || options === void 0 ? void 0 : options.format) !== null && _options$format !== void 0 ? _options$format : "extended");
       var representation = String((_options$representati = options === null || options === void 0 ? void 0 : options.representation) !== null && _options$representati !== void 0 ? _options$representati : "complete");
-      if (format2 !== "extended" && format2 !== "basic") {
+      if (format !== "extended" && format !== "basic") {
         throw new RangeError("format must be 'extended' or 'basic'");
       }
       if (representation !== "date" && representation !== "time" && representation !== "complete") {
@@ -4693,8 +4693,8 @@ var require_formatISO = __commonJS({
       }
       var result = "";
       var tzOffset = "";
-      var dateDelimiter = format2 === "extended" ? "-" : "";
-      var timeDelimiter = format2 === "extended" ? ":" : "";
+      var dateDelimiter = format === "extended" ? "-" : "";
+      var timeDelimiter = format === "extended" ? ":" : "";
       if (representation !== "time") {
         var day = (0, _index2.default)(originalDate.getDate(), 2);
         var month = (0, _index2.default)(originalDate.getMonth() + 1, 2);
@@ -4746,17 +4746,17 @@ var require_formatISO9075 = __commonJS({
       if (!(0, _index2.default)(originalDate)) {
         throw new RangeError("Invalid time value");
       }
-      var format2 = String((_options$format = options === null || options === void 0 ? void 0 : options.format) !== null && _options$format !== void 0 ? _options$format : "extended");
+      var format = String((_options$format = options === null || options === void 0 ? void 0 : options.format) !== null && _options$format !== void 0 ? _options$format : "extended");
       var representation = String((_options$representati = options === null || options === void 0 ? void 0 : options.representation) !== null && _options$representati !== void 0 ? _options$representati : "complete");
-      if (format2 !== "extended" && format2 !== "basic") {
+      if (format !== "extended" && format !== "basic") {
         throw new RangeError("format must be 'extended' or 'basic'");
       }
       if (representation !== "date" && representation !== "time" && representation !== "complete") {
         throw new RangeError("representation must be 'date', 'time', or 'complete'");
       }
       var result = "";
-      var dateDelimiter = format2 === "extended" ? "-" : "";
-      var timeDelimiter = format2 === "extended" ? ":" : "";
+      var dateDelimiter = format === "extended" ? "-" : "";
+      var timeDelimiter = format === "extended" ? ":" : "";
       if (representation !== "time") {
         var day = (0, _index3.default)(originalDate.getDate(), 2);
         var month = (0, _index3.default)(originalDate.getMonth() + 1, 2);
@@ -13676,10 +13676,9 @@ var require_date_fns = __commonJS({
   }
 });
 
-// index.js
-import fs from "node:fs";
-import process from "node:process";
-import { Buffer as Buffer2 } from "node:buffer";
+// src/index.js
+var import_date_fns = __toESM(require_date_fns(), 1);
+import { parseArgs } from "node:util";
 
 // node_modules/fast-xml-parser/src/util.js
 var nameStartChar = ":A-Za-z_\\u00C0-\\u00D6\\u00D8-\\u00F6\\u00F8-\\u02FF\\u0370-\\u037D\\u037F-\\u1FFF\\u200C-\\u200D\\u2070-\\u218F\\u2C00-\\u2FEF\\u3001-\\uD7FF\\uF900-\\uFDCF\\uFDF0-\\uFFFD";
@@ -17600,39 +17599,42 @@ var XMLParser = class {
   }
 };
 
-// index.js
-var import_date_fns = __toESM(require_date_fns(), 1);
-import crypto from "node:crypto";
-var envPath = ".env";
-if (fs.existsSync(envPath)) {
-  const envContent = fs.readFileSync(envPath, "utf-8");
-  for (const line of envContent.split("\n")) {
-    const trimmed = line.trim();
-    if (trimmed && !trimmed.startsWith("#") && trimmed.includes("=")) {
-      const idx = trimmed.indexOf("=");
-      const key = trimmed.substring(0, idx).trim();
-      const value = trimmed.substring(idx + 1).trim();
-      if (key && value) {
-        process.env[key] = value;
+// src/config.js
+import fs from "node:fs";
+import process2 from "node:process";
+function loadEnv() {
+  const envPath = ".env";
+  if (fs.existsSync(envPath)) {
+    const envContent = fs.readFileSync(envPath, "utf-8");
+    for (const line of envContent.split("\n")) {
+      const trimmed = line.trim();
+      if (trimmed && !trimmed.startsWith("#") && trimmed.includes("=")) {
+        const idx = trimmed.indexOf("=");
+        const key = trimmed.substring(0, idx).trim();
+        const value = trimmed.substring(idx + 1).trim();
+        if (key && value) {
+          process2.env[key] = value;
+        }
       }
     }
   }
 }
+loadEnv();
 var CONFIG = {
-  url: process.env.NEXTCLOUD_URL,
-  user: process.env.NEXTCLOUD_USER,
-  token: process.env.NEXTCLOUD_TOKEN
+  url: process2.env.NEXTCLOUD_URL,
+  user: process2.env.NEXTCLOUD_USER,
+  token: process2.env.NEXTCLOUD_TOKEN
 };
-if (!CONFIG.url || !CONFIG.user || !CONFIG.token) {
-  console.error(
-    JSON.stringify({
-      status: "error",
-      message: "Missing configuration. Set NEXTCLOUD_URL, NEXTCLOUD_USER, and NEXTCLOUD_TOKEN."
-    })
-  );
-  process.exit(1);
-}
-{
+function validateConfig() {
+  if (!CONFIG.url || !CONFIG.user || !CONFIG.token) {
+    console.error(
+      JSON.stringify({
+        status: "error",
+        message: "Missing configuration. Set NEXTCLOUD_URL, NEXTCLOUD_USER, and NEXTCLOUD_TOKEN."
+      })
+    );
+    process2.exit(1);
+  }
   const parsed = (() => {
     try {
       return new URL(CONFIG.url);
@@ -17647,26 +17649,28 @@ if (!CONFIG.url || !CONFIG.user || !CONFIG.token) {
         message: `Invalid NEXTCLOUD_URL: '${CONFIG.url}'`
       })
     );
-    process.exit(1);
+    process2.exit(1);
   }
   const isLocalhost = parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1" || parsed.hostname === "[::1]";
-  if (parsed.protocol !== "https:" && !isLocalhost && process.env.OPENCLAW_ALLOW_HTTP !== "1") {
+  if (parsed.protocol !== "https:" && !isLocalhost && process2.env.OPENCLAW_ALLOW_HTTP !== "1") {
     console.error(
       JSON.stringify({
         status: "error",
         message: `Refusing to send credentials over '${parsed.protocol}//' to '${parsed.host}'. Use https:// or set OPENCLAW_ALLOW_HTTP=1 to override (not recommended).`
       })
     );
-    process.exit(1);
+    process2.exit(1);
   }
 }
-var AUTH_HEADER = "Basic " + Buffer2.from(`${CONFIG.user}:${CONFIG.token}`).toString("base64");
+var AUTH_HEADER = "Basic " + Buffer.from(`${CONFIG.user}:${CONFIG.token}`).toString("base64");
+
+// src/request.js
 var parser = new XMLParser({
   ignoreAttributes: false,
   attributeNamePrefix: "@_"
 });
 async function request(endpoint, options = {}) {
-  const url = `${CONFIG.url}${endpoint}`;
+  const url = new URL(endpoint, CONFIG.url).toString();
   const headers = {
     Authorization: AUTH_HEADER,
     "User-Agent": "OpenClaw-Nextcloud-Skill",
@@ -17676,7 +17680,13 @@ async function request(endpoint, options = {}) {
     headers["OCS-APIRequest"] = "true";
   }
   try {
-    const response = await fetch(url, { ...options, headers });
+    const response = await fetch(url, {
+      ...options,
+      headers,
+      // Node 22+ fetch strips Authorization on cross-origin redirects by default
+      redirect: "follow",
+      signal: AbortSignal.timeout(3e4)
+    });
     if (!response.ok) {
       let bodyText;
       try {
@@ -17704,76 +17714,27 @@ Response: ${bodyText.substring(0, 500)}${bodyText.length > 500 ? "..." : ""}`
   } catch (error) {
     const wrapped = new Error(`Request failed: ${error.message}`);
     if (error.status !== void 0) wrapped.status = error.status;
+    if (error.responseBody !== void 0)
+      wrapped.responseBody = error.responseBody;
     throw wrapped;
   }
 }
-function output(data) {
-  console.log(
-    JSON.stringify(
-      {
-        status: "success",
-        data
-      },
-      null,
-      2
-    )
-  );
-}
-function errorOutput(message) {
-  const errorObj = {
-    status: "error",
-    message: message.stack || message
+async function fetchRaw(endpoint, options = {}) {
+  const url = new URL(endpoint, CONFIG.url).toString();
+  const headers = {
+    Authorization: AUTH_HEADER,
+    "User-Agent": "OpenClaw-Nextcloud-Skill",
+    ...options.headers
   };
-  if (message.responseBody) {
-    errorObj.responseBody = message.responseBody;
-  }
-  if (message.status) {
-    errorObj.httpStatus = message.status;
-  }
-  console.error(JSON.stringify(errorObj, null, 2));
-  process.exit(1);
+  return fetch(url, {
+    ...options,
+    headers,
+    redirect: "follow",
+    signal: AbortSignal.timeout(3e4)
+  });
 }
-function ensureArray(item) {
-  if (Array.isArray(item)) return item;
-  if (item === void 0 || item === null) return [];
-  return [item];
-}
-function matchByName(items, name) {
-  if (!name) return null;
-  const exact = items.find((i) => i.displayname === name);
-  if (exact) return exact;
-  const lower = name.toLowerCase();
-  const ci = items.find(
-    (i) => i.displayname && i.displayname.toLowerCase() === lower
-  );
-  if (ci) return ci;
-  const slug = lower.replace(/^https?:\/\/[^/]+/, "").replace(/\/+$/, "").split("/").filter(Boolean).pop();
-  if (slug) {
-    const bySlug = items.find((i) => {
-      const itemSlug = (i.url || "").replace(/\/+$/, "").split("/").filter(Boolean).pop();
-      return itemSlug && itemSlug.toLowerCase() === slug;
-    });
-    if (bySlug) return bySlug;
-  }
-  return items.find((i) => i.url && (i.url === name || name.endsWith(i.url))) || null;
-}
-function parseDateInput(str) {
-  const compact = String(str).match(
-    /^(\d{4})(\d{2})(\d{2})(?:T(\d{2})(\d{2})(\d{2})(Z?))?$/
-  );
-  if (compact) {
-    const [, y, mo, d, h = "00", mi = "00", s = "00", z = ""] = compact;
-    const date2 = /* @__PURE__ */ new Date(`${y}-${mo}-${d}T${h}:${mi}:${s}${z}`);
-    if (!isNaN(date2.getTime())) return date2;
-  }
-  const date = new Date(str);
-  if (isNaN(date.getTime())) {
-    throw new Error(
-      `Invalid date '${str}'. Use ISO 8601 (2026-04-15T17:00:00Z) or CalDAV compact format (20260415T170000Z).`
-    );
-  }
-  return date;
-}
+
+// src/notes.js
 var Notes = {
   async list() {
     const data = await request("/index.php/apps/notes/api/v1/notes", {
@@ -17816,7 +17777,6 @@ var Notes = {
       modified: data.modified,
       category: data.category,
       content: data.content
-      // Return content as well for verification
     };
   },
   async update(id, title, content, category) {
@@ -17930,6 +17890,110 @@ var Notes = {
     }
   }
 };
+
+// src/utils.js
+import process3 from "node:process";
+function output(data) {
+  console.log(
+    JSON.stringify(
+      {
+        status: "success",
+        data
+      },
+      null,
+      2
+    )
+  );
+}
+function errorOutput(message) {
+  const errorObj = {
+    status: "error",
+    message: message.message || String(message)
+  };
+  if (message.responseBody) {
+    errorObj.responseBody = message.responseBody;
+  }
+  if (message.status) {
+    errorObj.httpStatus = message.status;
+  }
+  console.error(JSON.stringify(errorObj, null, 2));
+  process3.exit(1);
+}
+function ensureArray(item) {
+  if (Array.isArray(item)) return item;
+  if (item === void 0 || item === null) return [];
+  return [item];
+}
+function matchByName(items, name) {
+  if (!name) return null;
+  const exact = items.find((i) => i.displayname === name);
+  if (exact) return exact;
+  const lower = name.toLowerCase();
+  const ci = items.find(
+    (i) => i.displayname && i.displayname.toLowerCase() === lower
+  );
+  if (ci) return ci;
+  const slug = lower.replace(/^https?:\/\/[^/]+/, "").replace(/\/+$/, "").split("/").filter(Boolean).pop();
+  if (slug) {
+    const bySlug = items.find((i) => {
+      const itemSlug = (i.url || "").replace(/\/+$/, "").split("/").filter(Boolean).pop();
+      return itemSlug && itemSlug.toLowerCase() === slug;
+    });
+    if (bySlug) return bySlug;
+  }
+  return items.find(
+    (i) => i.url && (i.url === name || i.url.endsWith(name) || name.endsWith(i.url))
+  ) || null;
+}
+function parseDateInput(str) {
+  const compact = String(str).match(
+    /^(\d{4})(\d{2})(\d{2})(?:T(\d{2})(\d{2})(\d{2})(Z?))?$/
+  );
+  if (compact) {
+    const [, y, mo, d, h = "00", mi = "00", s = "00", z = ""] = compact;
+    const month = parseInt(mo, 10);
+    const day = parseInt(d, 10);
+    if (month < 1 || month > 12 || day < 1 || day > 31) {
+      throw new Error(
+        `Invalid date '${str}'. Use ISO 8601 (2026-04-15T17:00:00Z) or CalDAV compact format (20260415T170000Z).`
+      );
+    }
+    const date2 = /* @__PURE__ */ new Date(`${y}-${mo}-${d}T${h}:${mi}:${s}${z}`);
+    if (!isNaN(date2.getTime())) return date2;
+  }
+  const date = new Date(str);
+  if (isNaN(date.getTime())) {
+    throw new Error(
+      `Invalid date '${str}'. Use ISO 8601 (2026-04-15T17:00:00Z) or CalDAV compact format (20260415T170000Z).`
+    );
+  }
+  return date;
+}
+function xmlEscape(str) {
+  return String(str).replace(/[&<>"']/g, (c) => {
+    const map = {
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&apos;"
+    };
+    return map[c];
+  });
+}
+function icalEscape(str) {
+  if (str === null || str === void 0) return "";
+  return String(str).replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\n/g, "\\n");
+}
+function vcardEscape(str) {
+  if (str === null || str === void 0) return "";
+  return String(str).replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\n/g, "\\n");
+}
+function formatCalDavDate(date) {
+  return date.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
+}
+
+// src/files.js
 var Files = {
   async list(dirPath = "/") {
     const cleanPath = dirPath.startsWith("/") ? dirPath.slice(1) : dirPath;
@@ -18003,19 +18067,15 @@ var Files = {
       headers: {
         "Content-Type": "application/octet-stream"
       },
-      body: content,
-      rawBody: true
+      body: content
     });
     return { path: filePath, status: "uploaded", size: content.length };
   },
   async get(filePath) {
     const cleanPath = filePath.startsWith("/") ? filePath.slice(1) : filePath;
     const endpoint = `/remote.php/dav/files/${CONFIG.user}/${cleanPath}`;
-    const response = await fetch(`${CONFIG.url}${endpoint}`, {
-      method: "GET",
-      headers: {
-        Authorization: `Basic ${Buffer2.from(`${CONFIG.user}:${CONFIG.token}`).toString("base64")}`
-      }
+    const response = await fetchRaw(endpoint, {
+      method: "GET"
     });
     if (!response.ok) {
       throw new Error(
@@ -18035,35 +18095,34 @@ var Files = {
   },
   async search(query) {
     const endpoint = `/remote.php/dav/`;
-    const body = `
-            <d:searchrequest xmlns:d="DAV:" xmlns:oc="http://owncloud.org/ns">
-                <d:basicsearch>
-                    <d:select>
-                        <d:prop>
-                            <d:getlastmodified/>
-                            <d:getcontentlength/>
-                            <d:resourcetype/>
-                            <d:displayname/>
-                            <oc:fileid/>
-                        </d:prop>
-                    </d:select>
-                    <d:from>
-                        <d:scope>
-                            <d:href>/files/${CONFIG.user}</d:href>
-                            <d:depth>infinity</d:depth>
-                        </d:scope>
-                    </d:from>
-                    <d:where>
-                        <d:like>
-                            <d:prop>
-                                <d:displayname/>
-                            </d:prop>
-                            <d:literal>%${query}%</d:literal>
-                        </d:like>
-                    </d:where>
-                </d:basicsearch>
-            </d:searchrequest>
-        `;
+    const body = `<?xml version="1.0" encoding="utf-8"?>
+<d:searchrequest xmlns:d="DAV:" xmlns:oc="http://owncloud.org/ns">
+  <d:basicsearch>
+    <d:select>
+      <d:prop>
+        <d:getlastmodified/>
+        <d:getcontentlength/>
+        <d:resourcetype/>
+        <d:displayname/>
+        <oc:fileid/>
+      </d:prop>
+    </d:select>
+    <d:from>
+      <d:scope>
+        <d:href>/files/${CONFIG.user}</d:href>
+        <d:depth>infinity</d:depth>
+      </d:scope>
+    </d:from>
+    <d:where>
+      <d:like>
+        <d:prop>
+          <d:displayname/>
+        </d:prop>
+        <d:literal>%${xmlEscape(query)}%</d:literal>
+      </d:like>
+    </d:where>
+  </d:basicsearch>
+</d:searchrequest>`;
     const response = await request(endpoint, {
       method: "SEARCH",
       headers: { "Content-Type": "application/xml" },
@@ -18092,6 +18151,9 @@ var Files = {
     }).filter((f) => f);
   }
 };
+
+// src/caldav.js
+import crypto from "node:crypto";
 var CalDAV = {
   async findCalendars(componentType = null) {
     const endpoint = `/remote.php/dav/calendars/${CONFIG.user}/`;
@@ -18127,27 +18189,21 @@ var CalDAV = {
   async getEvents(start, end) {
     const calendars = await this.findCalendars("VEVENT");
     const allEvents = [];
-    const toCalDavDate = (dateStr) => {
-      const d = parseDateInput(dateStr);
-      return d.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
-    };
-    const startStr = toCalDavDate(start);
-    const endStr = toCalDavDate(end);
-    const body = `
-            <c:calendar-query xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav">
-                <d:prop>
-                    <d:getetag />
-                    <c:calendar-data />
-                </d:prop>
-                <c:filter>
-                    <c:comp-filter name="VCALENDAR">
-                        <c:comp-filter name="VEVENT">
-                            <c:time-range start="${startStr}" end="${endStr}" />
-                        </c:comp-filter>
-                    </c:comp-filter>
-                </c:filter>
-            </c:calendar-query>
-        `;
+    const startStr = formatCalDavDate(parseDateInput(start));
+    const endStr = formatCalDavDate(parseDateInput(end));
+    const body = `<c:calendar-query xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav">
+  <d:prop>
+    <d:getetag />
+    <c:calendar-data />
+  </d:prop>
+  <c:filter>
+    <c:comp-filter name="VCALENDAR">
+      <c:comp-filter name="VEVENT">
+        <c:time-range start="${xmlEscape(startStr)}" end="${xmlEscape(endStr)}" />
+      </c:comp-filter>
+    </c:comp-filter>
+  </c:filter>
+</c:calendar-query>`;
     for (const cal of calendars) {
       try {
         const response = await request(cal.url, {
@@ -18182,6 +18238,7 @@ var CalDAV = {
           });
         }
       } catch (e) {
+        console.error("Calendar error:", e.message);
       }
     }
     return allEvents;
@@ -18212,7 +18269,7 @@ var CalDAV = {
 <D:propertyupdate xmlns:D="DAV:" xmlns:cal="urn:ietf:params:xml:ns:calendar-server">
   <D:set>
     <D:prop>
-      <cal:calendar-color>${color}</cal:calendar-color>
+      <cal:calendar-color>${xmlEscape(color)}</cal:calendar-color>
     </D:prop>
   </D:set>
 </D:propertyupdate>`;
@@ -18236,24 +18293,22 @@ var CalDAV = {
       calendars = [matched];
     }
     const allTodos = [];
-    const body = `
-            <c:calendar-query xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav">
-                <d:prop>
-                    <d:getetag />
-                    <c:calendar-data />
-                    <c:uid />
-                </d:prop>
-                <c:filter>
-                    <c:comp-filter name="VCALENDAR">
-                        <c:comp-filter name="VTODO">
-                            <c:prop-filter name="STATUS">
-                                <c:text-match negate-condition="yes">COMPLETED</c:text-match>
-                            </c:prop-filter>
-                        </c:comp-filter>
-                    </c:comp-filter>
-                </c:filter>
-            </c:calendar-query>
-        `;
+    const body = `<c:calendar-query xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav">
+  <d:prop>
+    <d:getetag />
+    <c:calendar-data />
+    <c:uid />
+  </d:prop>
+  <c:filter>
+    <c:comp-filter name="VCALENDAR">
+      <c:comp-filter name="VTODO">
+        <c:prop-filter name="STATUS">
+          <c:text-match negate-condition="yes">COMPLETED</c:text-match>
+        </c:prop-filter>
+      </c:comp-filter>
+    </c:comp-filter>
+  </c:filter>
+</c:calendar-query>`;
     for (const cal of calendars) {
       try {
         const response = await request(cal.url, {
@@ -18266,9 +18321,7 @@ var CalDAV = {
         const responses = ensureArray(response["d:multistatus"]["d:response"]);
         for (const r of responses) {
           const propstats = ensureArray(r["d:propstat"]);
-          if (!propstats[0] || !propstats[0]["d:prop"]) {
-            continue;
-          }
+          if (!propstats[0] || !propstats[0]["d:prop"]) continue;
           const calData = propstats[0]["d:prop"]["cal:calendar-data"];
           const unfolded = calData.replace(/\r?\n[ \t]/g, "");
           const summaryMatch = calData.match(/SUMMARY:(.*)/);
@@ -18290,6 +18343,7 @@ var CalDAV = {
           });
         }
       } catch (e) {
+        console.error("Calendar error:", e.message);
       }
     }
     return allTodos;
@@ -18327,23 +18381,21 @@ var CalDAV = {
         );
       }
     }
-    const body = `
-            <c:calendar-query xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav">
-                <d:prop>
-                    <d:getetag />
-                    <c:calendar-data />
-                </d:prop>
-                <c:filter>
-                    <c:comp-filter name="VCALENDAR">
-                        <c:comp-filter name="VTODO">
-                             <c:prop-filter name="UID">
-                                <c:text-match collation="i;octet">${uid}</c:text-match>
-                             </c:prop-filter>
-                        </c:comp-filter>
-                    </c:comp-filter>
-                </c:filter>
-            </c:calendar-query>
-        `;
+    const body = `<c:calendar-query xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav">
+  <d:prop>
+    <d:getetag />
+    <c:calendar-data />
+  </d:prop>
+  <c:filter>
+    <c:comp-filter name="VCALENDAR">
+      <c:comp-filter name="VTODO">
+        <c:prop-filter name="UID">
+          <c:text-match collation="i;octet">${xmlEscape(uid)}</c:text-match>
+        </c:prop-filter>
+      </c:comp-filter>
+    </c:comp-filter>
+  </c:filter>
+</c:calendar-query>`;
     for (const cal of searchTargets) {
       try {
         const response = await request(cal.url, {
@@ -18364,6 +18416,7 @@ var CalDAV = {
           };
         }
       } catch (e) {
+        console.error("Find task error:", e.message);
       }
     }
     return null;
@@ -18372,8 +18425,9 @@ var CalDAV = {
     if (value === null || value === void 0) {
       return vcal;
     }
-    const regex = new RegExp(`^${prop}(?:;[^:\\r\\n]*)?:.*$`, "m");
-    const newLine = `${prop}:${value}`;
+    const regex = new RegExp(`^${prop}(;[^:\r
+]*)?:.*$`, "m");
+    const newLine = `${prop}$1:${icalEscape(value)}`;
     if (regex.test(vcal)) {
       return vcal.replace(regex, newLine);
     }
@@ -18383,31 +18437,31 @@ var CalDAV = {
         "Cannot insert property: no END:VTODO or END:VEVENT found in calendar data."
       );
     }
-    return vcal.replace(endMatch[0], `${newLine}
+    return vcal.replace(endMatch[0], `${prop}:${icalEscape(value)}
 ${endMatch[0]}`);
   },
   async createTask(title, calendarName, dueDate, priority, description) {
     const cal = await this.getCalendar(calendarName, "VTODO");
     const uid = crypto.randomUUID();
     const now = /* @__PURE__ */ new Date();
-    const dtstamp = (0, import_date_fns.format)(now, "yyyyMMdd'T'HHmmss'Z'");
+    const dtstamp = formatCalDavDate(now);
     let vtodo = `BEGIN:VCALENDAR
 VERSION:2.0
 PRODID:-//OpenClaw//Nextcloud Skill//EN
 BEGIN:VTODO
 UID:${uid}
 DTSTAMP:${dtstamp}
-SUMMARY:${title}
+SUMMARY:${icalEscape(title)}
 STATUS:NEEDS-ACTION
 `;
     if (dueDate) {
       const due = parseDateInput(dueDate);
-      vtodo += `DUE:${(0, import_date_fns.format)(due, "yyyyMMdd'T'HHmmss'Z'")}
+      vtodo += `DUE:${formatCalDavDate(due)}
 `;
     }
     if (priority) vtodo += `PRIORITY:${priority}
 `;
-    if (description) vtodo += `DESCRIPTION:${description}
+    if (description) vtodo += `DESCRIPTION:${icalEscape(description)}
 `;
     vtodo += `END:VTODO
 END:VCALENDAR`;
@@ -18439,7 +18493,7 @@ END:VCALENDAR`;
       vtodo = this._updateProperty(
         vtodo,
         "DUE",
-        (0, import_date_fns.format)(due, "yyyyMMdd'T'HHmmss'Z'")
+        formatCalDavDate(due)
       );
     }
     await request(task.href, {
@@ -18465,7 +18519,7 @@ END:VCALENDAR`;
     if (!task) throw new Error(`Task ${uid} not found.`);
     let vtodo = task.data;
     const now = /* @__PURE__ */ new Date();
-    const completedDate = (0, import_date_fns.format)(now, "yyyyMMdd'T'HHmmss'Z'");
+    const completedDate = formatCalDavDate(now);
     vtodo = this._updateProperty(vtodo, "STATUS", "COMPLETED");
     vtodo = this._updateProperty(vtodo, "COMPLETED", completedDate);
     vtodo = this._updateProperty(vtodo, "PERCENT-COMPLETE", "100");
@@ -18479,29 +18533,24 @@ END:VCALENDAR`;
     });
     return { uid, status: "completed" };
   },
-  // --- Calendar Events ---
   async createEvent(summary, start, end, calendarName, description, location) {
     const cal = await this.getCalendar(calendarName, "VEVENT");
     const uid = crypto.randomUUID();
     const now = /* @__PURE__ */ new Date();
-    const dtstamp = (0, import_date_fns.format)(now, "yyyyMMdd'T'HHmmss'Z'");
-    const toCalDavDate = (dateStr) => {
-      const d = parseDateInput(dateStr);
-      return d.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
-    };
+    const dtstamp = formatCalDavDate(now);
     let vevent = `BEGIN:VCALENDAR
 VERSION:2.0
 PRODID:-//OpenClaw//Nextcloud Skill//EN
 BEGIN:VEVENT
 UID:${uid}
 DTSTAMP:${dtstamp}
-SUMMARY:${summary}
-DTSTART:${toCalDavDate(start)}
-DTEND:${toCalDavDate(end)}
+SUMMARY:${icalEscape(summary)}
+DTSTART:${formatCalDavDate(parseDateInput(start))}
+DTEND:${formatCalDavDate(parseDateInput(end))}
 `;
-    if (description) vevent += `DESCRIPTION:${description}
+    if (description) vevent += `DESCRIPTION:${icalEscape(description)}
 `;
-    if (location) vevent += `LOCATION:${location}
+    if (location) vevent += `LOCATION:${icalEscape(location)}
 `;
     vevent += `END:VEVENT
 END:VCALENDAR`;
@@ -18531,23 +18580,21 @@ END:VCALENDAR`;
         );
       }
     }
-    const body = `
-            <c:calendar-query xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav">
-                <d:prop>
-                    <d:getetag />
-                    <c:calendar-data />
-                </d:prop>
-                <c:filter>
-                    <c:comp-filter name="VCALENDAR">
-                        <c:comp-filter name="VEVENT">
-                            <c:prop-filter name="UID">
-                                <c:text-match collation="i;octet">${uid}</c:text-match>
-                            </c:prop-filter>
-                        </c:comp-filter>
-                    </c:comp-filter>
-                </c:filter>
-            </c:calendar-query>
-        `;
+    const body = `<c:calendar-query xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav">
+  <d:prop>
+    <d:getetag />
+    <c:calendar-data />
+  </d:prop>
+  <c:filter>
+    <c:comp-filter name="VCALENDAR">
+      <c:comp-filter name="VEVENT">
+        <c:prop-filter name="UID">
+          <c:text-match collation="i;octet">${xmlEscape(uid)}</c:text-match>
+        </c:prop-filter>
+      </c:comp-filter>
+    </c:comp-filter>
+  </c:filter>
+</c:calendar-query>`;
     for (const cal of searchTargets) {
       try {
         const response = await request(cal.url, {
@@ -18568,6 +18615,7 @@ END:VCALENDAR`;
           };
         }
       } catch (e) {
+        console.error("Find event error:", e.message);
       }
     }
     return null;
@@ -18580,19 +18628,11 @@ END:VCALENDAR`;
       vevent = this._updateProperty(vevent, "SUMMARY", updates.summary);
     if (updates.start) {
       const d = parseDateInput(updates.start);
-      vevent = this._updateProperty(
-        vevent,
-        "DTSTART",
-        d.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z"
-      );
+      vevent = this._updateProperty(vevent, "DTSTART", formatCalDavDate(d));
     }
     if (updates.end) {
       const d = parseDateInput(updates.end);
-      vevent = this._updateProperty(
-        vevent,
-        "DTEND",
-        d.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z"
-      );
+      vevent = this._updateProperty(vevent, "DTEND", formatCalDavDate(d));
     }
     if (updates.description !== void 0) {
       vevent = this._updateProperty(vevent, "DESCRIPTION", updates.description);
@@ -18619,30 +18659,32 @@ END:VCALENDAR`;
     return { uid, status: "deleted" };
   }
 };
+
+// src/shares.js
+var OCS_HEADERS = { Accept: "application/json" };
+function unwrap(envelope) {
+  const meta = envelope && envelope.ocs && envelope.ocs.meta;
+  if (!meta || meta.status !== "ok") {
+    throw new Error(
+      `OCS error ${meta && meta.statuscode}: ${meta && meta.message}`
+    );
+  }
+  return envelope.ocs.data;
+}
+function normalize(s) {
+  const baseUrl = CONFIG.url.replace(/\/+$/, "");
+  return {
+    id: s.id,
+    path: s.path,
+    shareType: s.share_type,
+    shareWith: s.share_with || null,
+    permissions: s.permissions,
+    token: s.token || null,
+    url: s.url || (s.token ? `${baseUrl}/s/${s.token}` : null),
+    expireDate: s.expiration || null
+  };
+}
 var Shares = {
-  _ocsHeaders: { "OCS-APIREQUEST": "true", Accept: "application/json" },
-  _unwrap(envelope) {
-    const meta = envelope && envelope.ocs && envelope.ocs.meta;
-    if (!meta || meta.status !== "ok") {
-      throw new Error(
-        `OCS error ${meta && meta.statuscode}: ${meta && meta.message}`
-      );
-    }
-    return envelope.ocs.data;
-  },
-  _normalize(s) {
-    const baseUrl = CONFIG.url.replace(/\/+$/, "");
-    return {
-      id: s.id,
-      path: s.path,
-      shareType: s.share_type,
-      shareWith: s.share_with || null,
-      permissions: s.permissions,
-      token: s.token || null,
-      url: s.url || (s.token ? `${baseUrl}/s/${s.token}` : null),
-      expireDate: s.expiration || null
-    };
-  },
   async list({ path = null } = {}) {
     let endpoint = "/ocs/v2.php/apps/files_sharing/api/v1/shares";
     if (path) {
@@ -18651,10 +18693,10 @@ var Shares = {
     }
     const envelope = await request(endpoint, {
       method: "GET",
-      headers: this._ocsHeaders
+      headers: OCS_HEADERS
     });
-    const data = this._unwrap(envelope) || [];
-    return (Array.isArray(data) ? data : [data]).map((s) => this._normalize(s));
+    const data = unwrap(envelope) || [];
+    return (Array.isArray(data) ? data : [data]).map((s) => normalize(s));
   },
   async createLink({
     path,
@@ -18666,9 +18708,7 @@ var Shares = {
     const cleanPath = path.startsWith("/") ? path : `/${path}`;
     const permMap = {
       read: 1,
-      // read
       edit: 15
-      // create + read + update + delete
     };
     const perms = permMap[permissions];
     if (perms === void 0) {
@@ -18679,7 +18719,6 @@ var Shares = {
     const body = new URLSearchParams({
       path: cleanPath,
       shareType: "3",
-      // public link
       permissions: String(perms)
     });
     if (password) body.set("password", password);
@@ -18689,14 +18728,14 @@ var Shares = {
       {
         method: "POST",
         headers: {
-          ...this._ocsHeaders,
+          ...OCS_HEADERS,
           "Content-Type": "application/x-www-form-urlencoded"
         },
         body: body.toString()
       }
     );
-    const s = this._unwrap(envelope);
-    return { ...this._normalize(s), passwordProtected: !!password };
+    const s = unwrap(envelope);
+    return { ...normalize(s), passwordProtected: !!password };
   },
   async createUserShare({
     path,
@@ -18709,11 +18748,8 @@ var Shares = {
     const cleanPath = path.startsWith("/") ? path : `/${path}`;
     const permMap = {
       read: 1,
-      // read only
       edit: 15,
-      // read + write + delete
       delete: 31
-      // read + write + delete + share
     };
     const perms = permMap[permissions];
     if (perms === void 0) {
@@ -18724,7 +18760,6 @@ var Shares = {
     const body = new URLSearchParams({
       path: cleanPath,
       shareType: "0",
-      // user share
       shareWith: user,
       permissions: String(perms)
     });
@@ -18734,14 +18769,14 @@ var Shares = {
       {
         method: "POST",
         headers: {
-          ...this._ocsHeaders,
+          ...OCS_HEADERS,
           "Content-Type": "application/x-www-form-urlencoded"
         },
         body: body.toString()
       }
     );
-    const s = this._unwrap(envelope);
-    return this._normalize(s);
+    const s = unwrap(envelope);
+    return normalize(s);
   },
   async createGroupShare({
     path,
@@ -18754,11 +18789,8 @@ var Shares = {
     const cleanPath = path.startsWith("/") ? path : `/${path}`;
     const permMap = {
       read: 1,
-      // read only
       edit: 15,
-      // read + write + delete
       delete: 31
-      // read + write + delete + share
     };
     const perms = permMap[permissions];
     if (perms === void 0) {
@@ -18769,7 +18801,6 @@ var Shares = {
     const body = new URLSearchParams({
       path: cleanPath,
       shareType: "1",
-      // group share
       shareWith: group,
       permissions: String(perms)
     });
@@ -18779,25 +18810,27 @@ var Shares = {
       {
         method: "POST",
         headers: {
-          ...this._ocsHeaders,
+          ...OCS_HEADERS,
           "Content-Type": "application/x-www-form-urlencoded"
         },
         body: body.toString()
       }
     );
-    const s = this._unwrap(envelope);
-    return this._normalize(s);
+    const s = unwrap(envelope);
+    return normalize(s);
   },
   async delete({ id }) {
     if (!id) throw new Error("Missing share id");
     const envelope = await request(
       `/ocs/v2.php/apps/files_sharing/api/v1/shares/${encodeURIComponent(id)}`,
-      { method: "DELETE", headers: this._ocsHeaders }
+      { method: "DELETE", headers: OCS_HEADERS }
     );
-    this._unwrap(envelope);
+    unwrap(envelope);
     return { id, status: "deleted" };
   }
 };
+
+// src/talk.js
 var Talk = {
   async listConversations() {
     const data = await request("/ocs/v2.php/apps/spreed/api/v4/room", {
@@ -18806,6 +18839,7 @@ var Talk = {
     return ensureArray(data.ocs.data);
   },
   async getConversation(token) {
+    if (!token) throw new Error("Conversation token is required.");
     const data = await request(`/ocs/v2.php/apps/spreed/api/v4/room/${token}`, {
       headers: { Accept: "application/json" }
     });
@@ -18847,9 +18881,9 @@ var Talk = {
   async listMessages(token, options = {}) {
     if (!token) throw new Error("Conversation token is required.");
     const params = new URLSearchParams({
-      lookIntoFuture: options.lookIntoFuture !== void 0 ? options.lookIntoFuture : 0,
-      limit: options.limit !== void 0 ? options.limit : 50,
-      setReadMarker: options.setReadMarker !== false ? 1 : 0
+      lookIntoFuture: options.lookIntoFuture !== void 0 ? String(options.lookIntoFuture) : "0",
+      limit: options.limit !== void 0 ? String(options.limit) : "50",
+      setReadMarker: options.setReadMarker !== false ? "1" : "0"
     });
     const data = await request(
       `/ocs/v2.php/apps/spreed/api/v1/chat/${token}?${params}`,
@@ -18959,21 +18993,54 @@ var Talk = {
     }
     const encodedFilePath = encodeURIComponent(filePath);
     const fileEndpoint = `/remote.php/dav/files/${CONFIG.user}/Talk/${encodedFilePath}`;
-    const response = await request(fileEndpoint, {
+    await request(fileEndpoint, {
       method: "PUT",
       headers: {
         "Content-Type": "application/octet-stream"
       },
       body: fileContent
     });
-    const fileId = response.fileId || "unknown";
+    const propfindBody = `<?xml version="1.0" encoding="utf-8"?>
+<d:propfind xmlns:d="DAV:" xmlns:oc="http://owncloud.org/ns">
+  <d:prop><oc:fileid/></d:prop>
+</d:propfind>`;
+    let fileId = "unknown";
+    try {
+      const propResponse = await request(fileEndpoint, {
+        method: "PROPFIND",
+        headers: { Depth: "0", "Content-Type": "application/xml" },
+        body: propfindBody
+      });
+      if (propResponse["d:multistatus"]?.["d:response"]) {
+        const responses = ensureArray(propResponse["d:multistatus"]["d:response"]);
+        const propstats = ensureArray(responses[0]?.["d:propstat"]);
+        fileId = propstats[0]?.["d:prop"]?.["oc:fileid"] || "unknown";
+      }
+    } catch (e) {
+      console.error("File ID lookup error:", e.message);
+    }
+    let shared = false;
+    if (fileId !== "unknown") {
+      try {
+        await request(`/ocs/v2.php/apps/spreed/api/v1/chat/${token}/share`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json"
+          },
+          body: JSON.stringify({ objectType: "file", objectId: String(fileId) })
+        });
+        shared = true;
+      } catch (e) {
+        console.error("Share in conversation error:", e.message);
+      }
+    }
     return {
       token,
       filePath,
       status: "uploaded",
-      etag: response.etag || "unknown",
       fileId,
-      message: "File uploaded to Talk folder. It should appear in the conversation."
+      message: shared ? "File uploaded and shared in conversation." : "File uploaded to Talk folder but could not be shared in conversation."
     };
   },
   async addReaction(token, messageId, emoji) {
@@ -19113,6 +19180,9 @@ var Talk = {
     return data.ocs?.data || {};
   }
 };
+
+// src/contacts.js
+import crypto2 from "node:crypto";
 var Contacts = {
   async findAddressBooks() {
     const endpoint = `/remote.php/dav/addressbooks/users/${CONFIG.user}/`;
@@ -19172,14 +19242,12 @@ var Contacts = {
       addressBooks = [matched];
     }
     const allContacts = [];
-    const body = `
-            <card:addressbook-query xmlns:d="DAV:" xmlns:card="urn:ietf:params:xml:ns:carddav">
-                <d:prop>
-                    <d:getetag />
-                    <card:address-data />
-                </d:prop>
-            </card:addressbook-query>
-        `;
+    const body = `<card:addressbook-query xmlns:d="DAV:" xmlns:card="urn:ietf:params:xml:ns:carddav">
+  <d:prop>
+    <d:getetag />
+    <card:address-data />
+  </d:prop>
+</card:addressbook-query>`;
     for (const ab of addressBooks) {
       try {
         const response = await request(ab.url, {
@@ -19201,6 +19269,7 @@ var Contacts = {
           allContacts.push(contact);
         }
       } catch (e) {
+        console.error("Address book error:", e.message);
       }
     }
     return allContacts;
@@ -19213,11 +19282,13 @@ var Contacts = {
       return match ? cleanValue(match[1]) : null;
     };
     const getFieldWithTypes = (field) => {
-      const regex = new RegExp(`^${field}([^:\\n]*):([^\\n]*)`, "gm");
+      const regex = new RegExp(`^${field}([^:
+]*):([^
+]*)`, "gm");
       const matches = [];
       let match;
       while ((match = regex.exec(vcard)) !== null) {
-        const types = match[1].toUpperCase().split(";");
+        const types = match[1].toUpperCase().split(";").filter(Boolean);
         const value = cleanValue(match[2]);
         matches.push({ types, value });
       }
@@ -19235,7 +19306,6 @@ var Contacts = {
     const addresses = getFieldWithTypes("ADR");
     const parsedAddresses = addresses?.map((addr) => ({
       types: addr.types,
-      // ADR format: POBox;Ext;Street;City;Region;PostalCode;Country
       value: addr.value,
       street: addr.value?.split(";")[2] || null,
       city: addr.value?.split(";")[3] || null,
@@ -19282,19 +19352,17 @@ var Contacts = {
         );
       }
     }
-    const body = `
-            <card:addressbook-query xmlns:d="DAV:" xmlns:card="urn:ietf:params:xml:ns:carddav">
-                <d:prop>
-                    <d:getetag />
-                    <card:address-data />
-                </d:prop>
-                <card:filter>
-                    <card:prop-filter name="UID">
-                        <card:text-match collation="i;octet">${uid}</card:text-match>
-                    </card:prop-filter>
-                </card:filter>
-            </card:addressbook-query>
-        `;
+    const body = `<card:addressbook-query xmlns:d="DAV:" xmlns:card="urn:ietf:params:xml:ns:carddav">
+  <d:prop>
+    <d:getetag />
+    <card:address-data />
+  </d:prop>
+  <card:filter>
+    <card:prop-filter name="UID">
+      <card:text-match collation="i;octet">${xmlEscape(uid)}</card:text-match>
+    </card:prop-filter>
+  </card:filter>
+</card:addressbook-query>`;
     for (const ab of addressBooks) {
       try {
         const response = await request(ab.url, {
@@ -19315,55 +19383,58 @@ var Contacts = {
           };
         }
       } catch (e) {
+        console.error("Find contact error:", e.message);
       }
     }
     return null;
   },
   async create(fullName, addressBookName, options = {}) {
     const ab = await this.getAddressBook(addressBookName);
-    const uid = crypto.randomUUID();
+    const uid = crypto2.randomUUID();
     let vcard = `BEGIN:VCARD
 VERSION:3.0
 UID:${uid}
-FN:${fullName}
+FN:${vcardEscape(fullName)}
 `;
     const nameParts = fullName.split(" ");
     if (nameParts.length >= 2) {
       const lastName = nameParts[nameParts.length - 1];
       const firstName = nameParts.slice(0, -1).join(" ");
-      vcard += `N:${lastName};${firstName};;;
+      vcard += `N:${vcardEscape(lastName)};${vcardEscape(firstName)};;;
 `;
     } else {
-      vcard += `N:${fullName};;;;
+      vcard += `N:${vcardEscape(fullName)};;;;
 `;
     }
     if (options.email) {
       const emailType = options.emailType ? `;${options.emailType}` : "";
-      vcard += `EMAIL${emailType}:${options.email}
+      vcard += `EMAIL${emailType}:${vcardEscape(options.email)}
 `;
     }
     if (options.phone) {
       const phoneType = options.phoneType ? `;${options.phoneType}` : "";
-      vcard += `TEL${phoneType}:${options.phone}
+      vcard += `TEL${phoneType}:${vcardEscape(options.phone)}
 `;
     }
-    if (options.organization) vcard += `ORG:${options.organization}
+    if (options.organization)
+      vcard += `ORG:${vcardEscape(options.organization)}
 `;
-    if (options.title) vcard += `TITLE:${options.title}
+    if (options.title) vcard += `TITLE:${vcardEscape(options.title)}
 `;
-    if (options.note) vcard += `NOTE:${options.note}
+    if (options.note) vcard += `NOTE:${vcardEscape(options.note)}
 `;
-    if (options.bday) vcard += `BDAY:${options.bday}
+    if (options.bday) vcard += `BDAY:${vcardEscape(options.bday)}
 `;
-    if (options.anniversary) vcard += `ANNIVERSARY:${options.anniversary}
+    if (options.anniversary)
+      vcard += `ANNIVERSARY:${vcardEscape(options.anniversary)}
 `;
-    if (options.url) vcard += `URL:${options.url}
+    if (options.url) vcard += `URL:${vcardEscape(options.url)}
 `;
-    if (options.role) vcard += `ROLE:${options.role}
+    if (options.role) vcard += `ROLE:${vcardEscape(options.role)}
 `;
     if (options.address) {
       const addrParts = options.address.split("|");
-      vcard += `ADR:;;${addrParts.join(";")}
+      vcard += `ADR:;;${addrParts.map(vcardEscape).join(";")}
 `;
     }
     vcard += `END:VCARD`;
@@ -19381,14 +19452,17 @@ FN:${fullName}
     return { uid, status: "created", addressBook: ab.displayname };
   },
   _updateVCardField(vcard, field, value) {
-    const regex = new RegExp(`^${field}(?:;[^:]*)?:.*$`, "mi");
-    const newLine = `${field}:${value}`;
+    const regex = new RegExp(`^${field}(;[^:
+]*)?:.*$`, "mi");
+    const newLine = `${field}$1:${vcardEscape(value)}`;
     if (regex.test(vcard)) {
       return vcard.replace(regex, newLine);
-    } else {
-      return vcard.replace("END:VCARD", `${newLine}
-END:VCARD`);
     }
+    return vcard.replace(
+      "END:VCARD",
+      `${field}:${vcardEscape(value)}
+END:VCARD`
+    );
   },
   async update(uid, addressBookName, updates) {
     const contact = await this.findContactPath(uid, addressBookName);
@@ -19417,6 +19491,17 @@ END:VCARD`);
       vcard = this._updateVCardField(vcard, "TITLE", updates.title);
     if (updates.note)
       vcard = this._updateVCardField(vcard, "NOTE", updates.note);
+    if (updates.bday)
+      vcard = this._updateVCardField(vcard, "BDAY", updates.bday);
+    if (updates.anniversary)
+      vcard = this._updateVCardField(vcard, "ANNIVERSARY", updates.anniversary);
+    if (updates.url) vcard = this._updateVCardField(vcard, "URL", updates.url);
+    if (updates.role)
+      vcard = this._updateVCardField(vcard, "ROLE", updates.role);
+    if (updates.address) {
+      const addrParts = updates.address.split("|");
+      vcard = this._updateVCardField(vcard, "ADR", `;;${addrParts.join(";")}`);
+    }
     await request(contact.href, {
       method: "PUT",
       headers: {
@@ -19448,28 +19533,26 @@ END:VCARD`);
       addressBooks = [matched];
     }
     const allContacts = [];
-    const body = `
-            <card:addressbook-query xmlns:d="DAV:" xmlns:card="urn:ietf:params:xml:ns:carddav">
-                <d:prop>
-                    <d:getetag />
-                    <card:address-data />
-                </d:prop>
-                <card:filter test="anyof">
-                    <card:prop-filter name="FN">
-                        <card:text-match collation="i;unicode-casemap" match-type="contains">${query}</card:text-match>
-                    </card:prop-filter>
-                    <card:prop-filter name="EMAIL">
-                        <card:text-match collation="i;unicode-casemap" match-type="contains">${query}</card:text-match>
-                    </card:prop-filter>
-                    <card:prop-filter name="TEL">
-                        <card:text-match collation="i;unicode-casemap" match-type="contains">${query}</card:text-match>
-                    </card:prop-filter>
-                    <card:prop-filter name="ORG">
-                        <card:text-match collation="i;unicode-casemap" match-type="contains">${query}</card:text-match>
-                    </card:prop-filter>
-                </card:filter>
-            </card:addressbook-query>
-        `;
+    const body = `<card:addressbook-query xmlns:d="DAV:" xmlns:card="urn:ietf:params:xml:ns:carddav">
+  <d:prop>
+    <d:getetag />
+    <card:address-data />
+  </d:prop>
+  <card:filter test="anyof">
+    <card:prop-filter name="FN">
+      <card:text-match collation="i;unicode-casemap" match-type="contains">${xmlEscape(query)}</card:text-match>
+    </card:prop-filter>
+    <card:prop-filter name="EMAIL">
+      <card:text-match collation="i;unicode-casemap" match-type="contains">${xmlEscape(query)}</card:text-match>
+    </card:prop-filter>
+    <card:prop-filter name="TEL">
+      <card:text-match collation="i;unicode-casemap" match-type="contains">${xmlEscape(query)}</card:text-match>
+    </card:prop-filter>
+    <card:prop-filter name="ORG">
+      <card:text-match collation="i;unicode-casemap" match-type="contains">${xmlEscape(query)}</card:text-match>
+    </card:prop-filter>
+  </card:filter>
+</card:addressbook-query>`;
     for (const ab of addressBooks) {
       try {
         const response = await request(ab.url, {
@@ -19491,745 +19574,721 @@ END:VCARD`);
           allContacts.push(contact);
         }
       } catch (e) {
+        console.error("Address book error:", e.message);
       }
     }
     return allContacts;
   }
 };
+
+// src/index.js
+var COMMON_OPTIONS = {
+  id: { type: "string" },
+  title: { type: "string" },
+  content: { type: "string" },
+  category: { type: "string" },
+  name: { type: "string" },
+  path: { type: "string" },
+  query: { type: "string" },
+  uid: { type: "string" },
+  calendar: { type: "string" },
+  addressbook: { type: "string" },
+  due: { type: "string" },
+  priority: { type: "string" },
+  description: { type: "string" },
+  location: { type: "string" },
+  start: { type: "string" },
+  end: { type: "string" },
+  from: { type: "string" },
+  to: { type: "string" },
+  summary: { type: "string" },
+  color: { type: "string" },
+  type: { type: "string" },
+  permissions: { type: "string" },
+  password: { type: "string" },
+  expire: { type: "string" },
+  user: { type: "string" },
+  group: { type: "string" },
+  token: { type: "string" },
+  limit: { type: "string" },
+  "look-into-future": { type: "string" },
+  message: { type: "string" },
+  "reply-to": { type: "string" },
+  "message-id": { type: "string" },
+  emoji: { type: "string" },
+  question: { type: "string" },
+  options: { type: "string" },
+  "poll-id": { type: "string" },
+  "bot-id": { type: "string" },
+  file: { type: "string" },
+  source: { type: "string" },
+  invite: { type: "string" },
+  muted: { type: "string" },
+  "notification-level": { type: "string" },
+  "read-only": { type: "string" },
+  listable: { type: "string" },
+  favorite: { type: "string" },
+  output: { type: "string" },
+  email: { type: "string" },
+  "email-type": { type: "string" },
+  phone: { type: "string" },
+  "phone-type": { type: "string" },
+  organization: { type: "string" },
+  note: { type: "string" },
+  bday: { type: "string" },
+  anniversary: { type: "string" },
+  url: { type: "string" },
+  role: { type: "string" },
+  address: { type: "string" }
+};
 async function main() {
+  validateConfig();
   const args = process.argv.slice(2);
   const command = args[0];
   const subCommand = args[1];
+  const flagArgs = args.slice(2);
+  if (!command) {
+    console.log(
+      "Usage: node index.js <notes|files|calendar|calendars|tasks|talk|contacts|addressbooks|shares> <subcommand> [options]"
+    );
+    return;
+  }
+  let values;
   try {
-    if (command === "notes") {
-      if (subCommand === "list") {
-        const result = await Notes.list();
-        output(result);
-      } else if (subCommand === "get") {
-        const idIndex = args.indexOf("--id");
-        if (idIndex === -1) throw new Error("Missing --id");
-        const result = await Notes.get(args[idIndex + 1]);
-        output(result);
-      } else if (subCommand === "create") {
-        const titleIndex = args.indexOf("--title");
-        const contentIndex = args.indexOf("--content");
-        const categoryIndex = args.indexOf("--category");
-        if (titleIndex === -1 || contentIndex === -1) {
-          throw new Error("Missing --title or --content arguments");
-        }
-        const title = args[titleIndex + 1];
-        const content = args[contentIndex + 1];
-        const category = categoryIndex !== -1 ? args[categoryIndex + 1] : "";
-        if (!title || title.startsWith("--"))
-          throw new Error("Invalid title provided");
-        if (!content || content.startsWith("--"))
-          throw new Error("Invalid content provided");
-        if (category && category.startsWith("--"))
-          throw new Error("Invalid category provided");
-        const result = await Notes.create(title, content, category);
-        output(result);
-      } else if (subCommand === "edit") {
-        const idIndex = args.indexOf("--id");
-        const titleIndex = args.indexOf("--title");
-        const contentIndex = args.indexOf("--content");
-        const categoryIndex = args.indexOf("--category");
-        if (idIndex === -1) throw new Error("Missing --id");
-        const id = args[idIndex + 1];
-        const title = titleIndex !== -1 ? args[titleIndex + 1] : void 0;
-        const content = contentIndex !== -1 ? args[contentIndex + 1] : void 0;
-        const category = categoryIndex !== -1 ? args[categoryIndex + 1] : void 0;
-        const result = await Notes.update(id, title, content, category);
-        output(result);
-      } else if (subCommand === "delete") {
-        const idIndex = args.indexOf("--id");
-        if (idIndex === -1) throw new Error("Missing --id");
-        const result = await Notes.delete(args[idIndex + 1]);
-        output(result);
-      } else if (subCommand === "list-categories") {
-        const result = await Notes.listCategories();
-        output(result);
-      } else if (subCommand === "create-category") {
-        const nameIndex = args.indexOf("--name");
-        if (nameIndex === -1) throw new Error("Missing --name");
-        const result = await Notes.createCategory(args[nameIndex + 1]);
-        output(result);
-      } else if (subCommand === "delete-category") {
-        const nameIndex = args.indexOf("--name");
-        if (nameIndex === -1) throw new Error("Missing --name");
-        const result = await Notes.deleteCategory(args[nameIndex + 1]);
-        output(result);
-      } else if (subCommand === "history") {
-        const idIndex = args.indexOf("--id");
-        if (idIndex === -1) throw new Error("Missing --id");
-        const result = await Notes.getNoteHistory(args[idIndex + 1]);
-        output(result);
-      } else if (subCommand === "backup") {
-        const outputIndex = args.indexOf("--output");
-        const backup = await Notes.getBackup();
-        if (outputIndex !== -1) {
-          const fs2 = await import("fs");
-          const path = await import("path");
-          const outputPath = args[outputIndex + 1];
-          fs2.writeFileSync(outputPath, JSON.stringify(backup, null, 2));
-          output({ status: "backup-written", path: outputPath });
-        } else {
-          output(backup);
-        }
-      } else {
-        throw new Error("Unknown notes command");
-      }
-    } else if (command === "files") {
-      if (subCommand === "list") {
-        const pathIndex = args.indexOf("--path");
-        const path = pathIndex !== -1 ? args[pathIndex + 1] : "/";
-        const result = await Files.list(path);
-        output(result);
-      } else if (subCommand === "search") {
-        const queryIndex = args.indexOf("--query");
-        if (queryIndex === -1) throw new Error("Missing --query");
-        const result = await Files.search(args[queryIndex + 1]);
-        output(result);
-      } else if (subCommand === "upload") {
-        const pathIndex = args.indexOf("--path");
-        if (pathIndex === -1) throw new Error("Missing --path");
-        const filePath = args[pathIndex + 1];
-        const contentIndex = args.indexOf("--content");
-        if (contentIndex === -1) throw new Error("Missing --content");
-        const content = args[contentIndex + 1];
-        output(await Files.upload(filePath, content));
-      } else if (subCommand === "get") {
-        const pathIndex = args.indexOf("--path");
-        if (pathIndex === -1) throw new Error("Missing --path");
-        output(await Files.get(args[pathIndex + 1]));
-      } else if (subCommand === "delete") {
-        const pathIndex = args.indexOf("--path");
-        if (pathIndex === -1) throw new Error("Missing --path");
-        output(await Files.delete(args[pathIndex + 1]));
-      } else {
-        throw new Error("Unknown files command");
-      }
-    } else if (command === "calendar") {
-      if (subCommand === "list") {
-        const fromIndex = args.indexOf("--from");
-        const toIndex = args.indexOf("--to");
-        const start = fromIndex !== -1 ? args[fromIndex + 1] : (0, import_date_fns.formatISO)(/* @__PURE__ */ new Date());
-        const end = toIndex !== -1 ? args[toIndex + 1] : (0, import_date_fns.formatISO)((0, import_date_fns.addDays)(/* @__PURE__ */ new Date(), 7));
-        const result = await CalDAV.getEvents(start, end);
-        output(result);
-      } else if (subCommand === "create") {
-        const summaryIndex = args.indexOf("--summary");
-        if (summaryIndex === -1) throw new Error("Missing --summary");
-        const summary = args[summaryIndex + 1];
-        const startIndex = args.indexOf("--start");
-        if (startIndex === -1) throw new Error("Missing --start");
-        const start = args[startIndex + 1];
-        const endIndex = args.indexOf("--end");
-        if (endIndex === -1) throw new Error("Missing --end");
-        const end = args[endIndex + 1];
-        const calIndex = args.indexOf("--calendar");
-        const calendar = calIndex !== -1 ? args[calIndex + 1] : null;
-        const descIndex = args.indexOf("--description");
-        const description = descIndex !== -1 ? args[descIndex + 1] : null;
-        const locIndex = args.indexOf("--location");
-        const location = locIndex !== -1 ? args[locIndex + 1] : null;
-        output(
-          await CalDAV.createEvent(
-            summary,
-            start,
-            end,
-            calendar,
-            description,
-            location
-          )
+    const parsed = parseArgs({
+      args: flagArgs,
+      options: COMMON_OPTIONS,
+      allowPositionals: false
+    });
+    values = parsed.values;
+  } catch (e) {
+    errorOutput(new Error(`Invalid arguments: ${e.message}`));
+    return;
+  }
+  try {
+    switch (command) {
+      case "notes":
+        await handleNotes(subCommand, values);
+        break;
+      case "files":
+        await handleFiles(subCommand, values);
+        break;
+      case "calendar":
+        await handleCalendar(subCommand, values);
+        break;
+      case "tasks":
+        await handleTasks(subCommand, values);
+        break;
+      case "calendars":
+        await handleCalendars(subCommand, values);
+        break;
+      case "addressbooks":
+        await handleAddressBooks(subCommand, values);
+        break;
+      case "shares":
+        await handleShares(subCommand, values);
+        break;
+      case "talk":
+        await handleTalk(subCommand, values);
+        break;
+      case "contacts":
+        await handleContacts(subCommand, values);
+        break;
+      default:
+        console.log(
+          "Usage: node index.js <notes|files|calendar|calendars|tasks|talk|contacts|addressbooks|shares> <subcommand> [options]"
         );
-      } else if (subCommand === "edit") {
-        const uidIndex = args.indexOf("--uid");
-        if (uidIndex === -1) throw new Error("Missing --uid");
-        const uid = args[uidIndex + 1];
-        const calIndex = args.indexOf("--calendar");
-        const calendar = calIndex !== -1 ? args[calIndex + 1] : null;
-        const updates = {};
-        const summaryIndex = args.indexOf("--summary");
-        if (summaryIndex !== -1) updates.summary = args[summaryIndex + 1];
-        const startIndex = args.indexOf("--start");
-        if (startIndex !== -1) updates.start = args[startIndex + 1];
-        const endIndex = args.indexOf("--end");
-        if (endIndex !== -1) updates.end = args[endIndex + 1];
-        const descIndex = args.indexOf("--description");
-        if (descIndex !== -1) updates.description = args[descIndex + 1];
-        const locIndex = args.indexOf("--location");
-        if (locIndex !== -1) updates.location = args[locIndex + 1];
-        output(await CalDAV.updateEvent(uid, calendar, updates));
-      } else if (subCommand === "delete") {
-        const uidIndex = args.indexOf("--uid");
-        if (uidIndex === -1) throw new Error("Missing --uid");
-        const uid = args[uidIndex + 1];
-        const calIndex = args.indexOf("--calendar");
-        const calendar = calIndex !== -1 ? args[calIndex + 1] : null;
-        output(await CalDAV.deleteEvent(uid, calendar));
-      } else if (subCommand === "get-color") {
-        const calIndex = args.indexOf("--calendar");
-        const calendarName = calIndex !== -1 ? args[calIndex + 1] : null;
-        const calendar = await CalDAV.getCalendar("VEVENT", calendarName);
-        const color = await CalDAV.getCalendarColor(calendar.url);
-        output(color);
-      } else if (subCommand === "set-color") {
-        const calIndex = args.indexOf("--calendar");
-        const calendarName = calIndex !== -1 ? args[calIndex + 1] : null;
-        const colorIndex = args.indexOf("--color");
-        if (colorIndex === -1) throw new Error("Missing --color");
-        const color = args[colorIndex + 1];
-        const calendar = await CalDAV.getCalendar("VEVENT", calendarName);
-        const result = await CalDAV.setCalendarColor(calendar.url, color);
-        output(result);
-      } else {
-        throw new Error("Unknown calendar command");
-      }
-    } else if (command === "tasks") {
-      if (subCommand === "list") {
-        const calIndex = args.indexOf("--calendar");
-        const calendar = calIndex !== -1 ? args[calIndex + 1] : null;
-        const result = await CalDAV.getTodos(calendar);
-        output(result);
-      } else if (subCommand === "create") {
-        const titleIndex = args.indexOf("--title");
-        if (titleIndex === -1) throw new Error("Missing --title");
-        const title = args[titleIndex + 1];
-        const calIndex = args.indexOf("--calendar");
-        const calendar = calIndex !== -1 ? args[calIndex + 1] : null;
-        const dueIndex = args.indexOf("--due");
-        const dueDate = dueIndex !== -1 ? args[dueIndex + 1] : null;
-        const prioIndex = args.indexOf("--priority");
-        const priority = prioIndex !== -1 ? args[prioIndex + 1] : null;
-        const descIndex = args.indexOf("--description");
-        const description = descIndex !== -1 ? args[descIndex + 1] : null;
-        output(
-          await CalDAV.createTask(
-            title,
-            calendar,
-            dueDate,
-            priority,
-            description
-          )
-        );
-      } else if (subCommand === "edit") {
-        const uidIndex = args.indexOf("--uid");
-        if (uidIndex === -1) throw new Error("Missing --uid");
-        const uid = args[uidIndex + 1];
-        const calIndex = args.indexOf("--calendar");
-        const calendar = calIndex !== -1 ? args[calIndex + 1] : null;
-        const updates = {};
-        const titleIndex = args.indexOf("--title");
-        if (titleIndex !== -1) updates.title = args[titleIndex + 1];
-        const dueIndex = args.indexOf("--due");
-        if (dueIndex !== -1) updates.dueDate = args[dueIndex + 1];
-        const prioIndex = args.indexOf("--priority");
-        if (prioIndex !== -1) updates.priority = args[prioIndex + 1];
-        const descIndex = args.indexOf("--description");
-        if (descIndex !== -1) updates.description = args[descIndex + 1];
-        output(await CalDAV.updateTask(uid, calendar, updates));
-      } else if (subCommand === "delete") {
-        const uidIndex = args.indexOf("--uid");
-        if (uidIndex === -1) throw new Error("Missing --uid");
-        const uid = args[uidIndex + 1];
-        const calIndex = args.indexOf("--calendar");
-        const calendar = calIndex !== -1 ? args[calIndex + 1] : null;
-        output(await CalDAV.deleteTask(uid, calendar));
-      } else if (subCommand === "complete") {
-        const uidIndex = args.indexOf("--uid");
-        if (uidIndex === -1) throw new Error("Missing --uid");
-        const uid = args[uidIndex + 1];
-        const calIndex = args.indexOf("--calendar");
-        const calendar = calIndex !== -1 ? args[calIndex + 1] : null;
-        output(await CalDAV.completeTask(uid, calendar));
-      } else if (subCommand === "get-color") {
-        const calIndex = args.indexOf("--calendar");
-        const calendarName = calIndex !== -1 ? args[calIndex + 1] : null;
-        const calendar = await CalDAV.getCalendar("VTODO", calendarName);
-        const color = await CalDAV.getCalendarColor(calendar.url);
-        output(color);
-      } else if (subCommand === "set-color") {
-        const calIndex = args.indexOf("--calendar");
-        const calendarName = calIndex !== -1 ? args[calIndex + 1] : null;
-        const colorIndex = args.indexOf("--color");
-        if (colorIndex === -1) throw new Error("Missing --color");
-        const color = args[colorIndex + 1];
-        const calendar = await CalDAV.getCalendar("VTODO", calendarName);
-        const result = await CalDAV.setCalendarColor(calendar.url, color);
-        output(result);
-      } else {
-        throw new Error("Unknown tasks command");
-      }
-    } else if (command === "calendars") {
-      if (subCommand === "list") {
-        const typeIndex = args.indexOf("--type");
-        const type = typeIndex !== -1 ? args[typeIndex + 1] : null;
-        let componentType = null;
-        if (type === "tasks") componentType = "VTODO";
-        else if (type === "events") componentType = "VEVENT";
-        const calendars = await CalDAV.findCalendars(componentType);
-        output(
-          calendars.map((c) => ({
-            name: c.displayname,
-            type: c.componentType === "VTODO" ? "tasks" : "events"
-          }))
-        );
-      } else {
-        throw new Error("Unknown calendars command");
-      }
-    } else if (command === "addressbooks") {
-      if (subCommand === "list") {
-        const addressBooks = await Contacts.findAddressBooks();
-        output(addressBooks.map((a) => ({ name: a.displayname })));
-      } else {
-        throw new Error("Unknown addressbooks command");
-      }
-    } else if (command === "shares") {
-      if (subCommand === "create-link") {
-        const pathIndex = args.indexOf("--path");
-        if (pathIndex === -1) throw new Error("Missing --path");
-        const sharePath = args[pathIndex + 1];
-        const permIndex = args.indexOf("--permissions");
-        const permissions = permIndex !== -1 ? args[permIndex + 1] : "read";
-        const pwIndex = args.indexOf("--password");
-        const password = pwIndex !== -1 ? args[pwIndex + 1] : null;
-        const expIndex = args.indexOf("--expire");
-        const expireDate = expIndex !== -1 ? args[expIndex + 1] : null;
-        output(
-          await Shares.createLink({
-            path: sharePath,
-            permissions,
-            password,
-            expireDate
-          })
-        );
-      } else if (subCommand === "list") {
-        const pathIndex = args.indexOf("--path");
-        const sharePath = pathIndex !== -1 ? args[pathIndex + 1] : null;
-        output(await Shares.list({ path: sharePath }));
-      } else if (subCommand === "create-user") {
-        const pathIndex = args.indexOf("--path");
-        if (pathIndex === -1) throw new Error("Missing --path");
-        const sharePath = args[pathIndex + 1];
-        const userIndex = args.indexOf("--user");
-        if (userIndex === -1) throw new Error("Missing --user");
-        const shareUser = args[userIndex + 1];
-        const permIndex = args.indexOf("--permissions");
-        const permissions = permIndex !== -1 ? args[permIndex + 1] : "read";
-        const expIndex = args.indexOf("--expire");
-        const expireDate = expIndex !== -1 ? args[expIndex + 1] : null;
-        output(
-          await Shares.createUserShare({
-            path: sharePath,
-            user: shareUser,
-            permissions,
-            expireDate
-          })
-        );
-      } else if (subCommand === "create-group") {
-        const pathIndex = args.indexOf("--path");
-        if (pathIndex === -1) throw new Error("Missing --path");
-        const sharePath = args[pathIndex + 1];
-        const groupIndex = args.indexOf("--group");
-        if (groupIndex === -1) throw new Error("Missing --group");
-        const shareGroup = args[groupIndex + 1];
-        const permIndex = args.indexOf("--permissions");
-        const permissions = permIndex !== -1 ? args[permIndex + 1] : "read";
-        const expIndex = args.indexOf("--expire");
-        const expireDate = expIndex !== -1 ? args[expIndex + 1] : null;
-        output(
-          await Shares.createGroupShare({
-            path: sharePath,
-            group: shareGroup,
-            permissions,
-            expireDate
-          })
-        );
-      } else if (subCommand === "delete") {
-        const idIndex = args.indexOf("--id");
-        if (idIndex === -1) throw new Error("Missing --id");
-        output(await Shares.delete({ id: args[idIndex + 1] }));
-      } else {
-        throw new Error("Unknown shares command");
-      }
-    } else if (command === "talk") {
-      if (subCommand === "list") {
-        const result = await Talk.listConversations();
-        output(result);
-      } else if (subCommand === "create") {
-        const nameIndex = args.indexOf("--name");
-        if (nameIndex === -1) throw new Error("Missing --name");
-        const roomName = args[nameIndex + 1];
-        const typeIndex = args.indexOf("--type");
-        const roomType = typeIndex !== -1 ? args[typeIndex + 1] : "group";
-        const descIndex = args.indexOf("--description");
-        const description = descIndex !== -1 ? args[descIndex + 1] : null;
-        const passwordIndex = args.indexOf("--password");
-        const password = passwordIndex !== -1 ? args[passwordIndex + 1] : null;
-        const inviteIndex = args.indexOf("--invite");
-        const invite = inviteIndex !== -1 ? args[inviteIndex + 1] : null;
-        const options = {};
-        if (description) options.description = description;
-        if (password) options.password = password;
-        const result = await Talk.createConversation(
-          roomName,
-          roomType,
-          invite,
-          options
-        );
-        output(result);
-      } else if (subCommand === "delete") {
-        const tokenIndex = args.indexOf("--token");
-        if (tokenIndex === -1) throw new Error("Missing --token");
-        output(await Talk.deleteConversation(args[tokenIndex + 1]));
-      } else if (subCommand === "get") {
-        const tokenIndex = args.indexOf("--token");
-        if (tokenIndex === -1) throw new Error("Missing --token");
-        output(await Talk.getConversation(args[tokenIndex + 1]));
-      } else if (subCommand === "messages") {
-        const tokenIndex = args.indexOf("--token");
-        if (tokenIndex === -1) throw new Error("Missing --token");
-        const token = args[tokenIndex + 1];
-        const limitIndex = args.indexOf("--limit");
-        const limit = limitIndex !== -1 ? parseInt(args[limitIndex + 1], 10) : 50;
-        const lookIntoFutureIndex = args.indexOf("--look-into-future");
-        const lookIntoFuture = lookIntoFutureIndex !== -1 ? parseInt(args[lookIntoFutureIndex + 1], 10) : 0;
-        output(
-          await Talk.listMessages(token, {
-            limit,
-            lookIntoFuture,
-            setReadMarker: true
-          })
-        );
-      } else if (subCommand === "send") {
-        const tokenIndex = args.indexOf("--token");
-        if (tokenIndex === -1) throw new Error("Missing --token");
-        const token = args[tokenIndex + 1];
-        const messageIndex = args.indexOf("--message");
-        if (messageIndex === -1) throw new Error("Missing --message");
-        const message = args[messageIndex + 1];
-        const replyToIndex = args.indexOf("--reply-to");
-        const replyTo = replyToIndex !== -1 ? parseInt(args[replyToIndex + 1], 10) : null;
-        output(await Talk.sendMessage(token, message, replyTo));
-      } else if (subCommand === "delete-message") {
-        const tokenIndex = args.indexOf("--token");
-        if (tokenIndex === -1) throw new Error("Missing --token");
-        const messageIdIndex = args.indexOf("--message-id");
-        if (messageIdIndex === -1) throw new Error("Missing --message-id");
-        output(
-          await Talk.deleteMessage(
-            args[tokenIndex + 1],
-            parseInt(args[messageIdIndex + 1], 10)
-          )
-        );
-      } else if (subCommand === "edit-message") {
-        const tokenIndex = args.indexOf("--token");
-        if (tokenIndex === -1) throw new Error("Missing --token");
-        const messageIdIndex = args.indexOf("--message-id");
-        if (messageIdIndex === -1) throw new Error("Missing --message-id");
-        const messageIndex = args.indexOf("--message");
-        if (messageIndex === -1) throw new Error("Missing --message");
-        output(
-          await Talk.editMessage(
-            args[tokenIndex + 1],
-            parseInt(args[messageIdIndex + 1], 10),
-            args[messageIndex + 1]
-          )
-        );
-      } else if (subCommand === "add-participant") {
-        const tokenIndex = args.indexOf("--token");
-        if (tokenIndex === -1) throw new Error("Missing --token");
-        const userIndex = args.indexOf("--user");
-        if (userIndex === -1) throw new Error("Missing --user");
-        const token = args[tokenIndex + 1];
-        const user = args[userIndex + 1];
-        const sourceIndex = args.indexOf("--source");
-        const source = sourceIndex !== -1 ? args[sourceIndex + 1] : "users";
-        output(await Talk.addParticipant(token, user, source));
-      } else if (subCommand === "enable-bot") {
-        const tokenIndex = args.indexOf("--token");
-        if (tokenIndex === -1) throw new Error("Missing --token");
-        const botIdIndex = args.indexOf("--bot-id");
-        if (botIdIndex === -1) throw new Error("Missing --bot-id");
-        output(
-          await Talk.enableBotInConversation(
-            args[tokenIndex + 1],
-            parseInt(args[botIdIndex + 1], 10)
-          )
-        );
-      } else if (subCommand === "disable-bot") {
-        const tokenIndex = args.indexOf("--token");
-        if (tokenIndex === -1) throw new Error("Missing --token");
-        const botIdIndex = args.indexOf("--bot-id");
-        if (botIdIndex === -1) throw new Error("Missing --bot-id");
-        output(
-          await Talk.disableBotInConversation(
-            args[tokenIndex + 1],
-            parseInt(args[botIdIndex + 1], 10)
-          )
-        );
-      } else if (subCommand === "upload-file") {
-        const tokenIndex = args.indexOf("--token");
-        if (tokenIndex === -1) throw new Error("Missing --token");
-        const fileIndex = args.indexOf("--file");
-        if (fileIndex === -1) throw new Error("Missing --file");
-        const contentIndex = args.indexOf("--content");
-        if (contentIndex === -1) throw new Error("Missing --content");
-        output(
-          await Talk.uploadFileToConversation(
-            args[tokenIndex + 1],
-            args[fileIndex + 1],
-            args[contentIndex + 1]
-          )
-        );
-      } else if (subCommand === "add-reaction") {
-        const tokenIndex = args.indexOf("--token");
-        if (tokenIndex === -1) throw new Error("Missing --token");
-        const messageIdIndex = args.indexOf("--message-id");
-        if (messageIdIndex === -1) throw new Error("Missing --message-id");
-        const emojiIndex = args.indexOf("--emoji");
-        if (emojiIndex === -1) throw new Error("Missing --emoji");
-        output(
-          await Talk.addReaction(
-            args[tokenIndex + 1],
-            parseInt(args[messageIdIndex + 1], 10),
-            args[emojiIndex + 1]
-          )
-        );
-      } else if (subCommand === "delete-reaction") {
-        const tokenIndex = args.indexOf("--token");
-        if (tokenIndex === -1) throw new Error("Missing --token");
-        const messageIdIndex = args.indexOf("--message-id");
-        if (messageIdIndex === -1) throw new Error("Missing --message-id");
-        const emojiIndex = args.indexOf("--emoji");
-        if (emojiIndex === -1) throw new Error("Missing --emoji");
-        output(
-          await Talk.deleteReaction(
-            args[tokenIndex + 1],
-            parseInt(args[messageIdIndex + 1], 10),
-            args[emojiIndex + 1]
-          )
-        );
-      } else if (subCommand === "list-reactions") {
-        const tokenIndex = args.indexOf("--token");
-        if (tokenIndex === -1) throw new Error("Missing --token");
-        const messageIdIndex = args.indexOf("--message-id");
-        if (messageIdIndex === -1) throw new Error("Missing --message-id");
-        output(
-          await Talk.listReactions(
-            args[tokenIndex + 1],
-            parseInt(args[messageIdIndex + 1], 10)
-          )
-        );
-      } else if (subCommand === "create-poll") {
-        const tokenIndex = args.indexOf("--token");
-        if (tokenIndex === -1) throw new Error("Missing --token");
-        const questionIndex = args.indexOf("--question");
-        if (questionIndex === -1) throw new Error("Missing --question");
-        const optionsIndex = args.indexOf("--options");
-        if (optionsIndex === -1) throw new Error("Missing --options");
-        const optionsStr = args[optionsIndex + 1];
-        const options = optionsStr.split(",").map((opt) => opt.trim());
-        output(
-          await Talk.createPoll(
-            args[tokenIndex + 1],
-            args[questionIndex + 1],
-            options
-          )
-        );
-      } else if (subCommand === "get-poll") {
-        const tokenIndex = args.indexOf("--token");
-        if (tokenIndex === -1) throw new Error("Missing --token");
-        const pollIdIndex = args.indexOf("--poll-id");
-        if (pollIdIndex === -1) throw new Error("Missing --poll-id");
-        output(await Talk.getPoll(args[tokenIndex + 1], args[pollIdIndex + 1]));
-      } else if (subCommand === "close-poll") {
-        const tokenIndex = args.indexOf("--token");
-        if (tokenIndex === -1) throw new Error("Missing --token");
-        const pollIdIndex = args.indexOf("--poll-id");
-        if (pollIdIndex === -1) throw new Error("Missing --poll-id");
-        output(
-          await Talk.closePoll(args[tokenIndex + 1], args[pollIdIndex + 1])
-        );
-      } else if (subCommand === "publish-poll") {
-        const tokenIndex = args.indexOf("--token");
-        if (tokenIndex === -1) throw new Error("Missing --token");
-        const pollIdIndex = args.indexOf("--poll-id");
-        if (pollIdIndex === -1) throw new Error("Missing --poll-id");
-        output(
-          await Talk.publishPoll(args[tokenIndex + 1], args[pollIdIndex + 1])
-        );
-      } else if (subCommand === "get-poll-results") {
-        const tokenIndex = args.indexOf("--token");
-        if (tokenIndex === -1) throw new Error("Missing --token");
-        const pollIdIndex = args.indexOf("--poll-id");
-        if (pollIdIndex === -1) throw new Error("Missing --poll-id");
-        output(
-          await Talk.getPollResults(
-            args[tokenIndex + 1],
-            args[pollIdIndex + 1]
-          )
-        );
-      } else if (subCommand === "list-bots") {
-        const tokenIndex = args.indexOf("--token");
-        const token = tokenIndex !== -1 ? args[tokenIndex + 1] : null;
-        output(await Talk.listBots(token));
-      } else if (subCommand === "get-settings") {
-        const tokenIndex = args.indexOf("--token");
-        if (tokenIndex === -1) throw new Error("Missing --token");
-        output(await Talk.getSettings(args[tokenIndex + 1]));
-      } else if (subCommand === "update-settings") {
-        const tokenIndex = args.indexOf("--token");
-        if (tokenIndex === -1) throw new Error("Missing --token");
-        const token = args[tokenIndex + 1];
-        const settings = {};
-        const mutedIndex = args.indexOf("--muted");
-        if (mutedIndex !== -1) settings.muted = args[mutedIndex + 1] === "1";
-        const notificationLevelIndex = args.indexOf("--notification-level");
-        if (notificationLevelIndex !== -1)
-          settings.notificationLevel = args[notificationLevelIndex + 1];
-        const readOnlyIndex = args.indexOf("--read-only");
-        if (readOnlyIndex !== -1)
-          settings.readOnly = args[readOnlyIndex + 1] === "1";
-        const listableIndex = args.indexOf("--listable");
-        if (listableIndex !== -1)
-          settings.listable = args[listableIndex + 1] === "1";
-        const favoriteIndex = args.indexOf("--favorite");
-        if (favoriteIndex !== -1)
-          settings.favorite = args[favoriteIndex + 1] === "1";
-        const passwordIndex = args.indexOf("--password");
-        if (passwordIndex !== -1) settings.password = args[passwordIndex + 1];
-        output(await Talk.updateSettings(token, settings));
-      } else if (subCommand === "get-guest-settings") {
-        const tokenIndex = args.indexOf("--token");
-        if (tokenIndex === -1) throw new Error("Missing --token");
-        output(await Talk.getGuestSettings(args[tokenIndex + 1]));
-      } else if (subCommand === "update-guest-settings") {
-        const tokenIndex = args.indexOf("--token");
-        if (tokenIndex === -1) throw new Error("Missing --token");
-        const token = args[tokenIndex + 1];
-        const settings = {};
-        const mutedIndex = args.indexOf("--muted");
-        if (mutedIndex !== -1) settings.muted = args[mutedIndex + 1] === "1";
-        const notificationLevelIndex = args.indexOf("--notification-level");
-        if (notificationLevelIndex !== -1)
-          settings.notificationLevel = args[notificationLevelIndex + 1];
-        const readOnlyIndex = args.indexOf("--read-only");
-        if (readOnlyIndex !== -1)
-          settings.readOnly = args[readOnlyIndex + 1] === "1";
-        const listableIndex = args.indexOf("--listable");
-        if (listableIndex !== -1)
-          settings.listable = args[listableIndex + 1] === "1";
-        const favoriteIndex = args.indexOf("--favorite");
-        if (favoriteIndex !== -1)
-          settings.favorite = args[favoriteIndex + 1] === "1";
-        const passwordIndex = args.indexOf("--password");
-        if (passwordIndex !== -1) settings.password = args[passwordIndex + 1];
-        output(await Talk.updateGuestSettings(token, settings));
-      } else {
-        throw new Error("Unknown talk command");
-      }
-    } else if (command === "contacts") {
-      if (subCommand === "list") {
-        const abIndex = args.indexOf("--addressbook");
-        const addressBook = abIndex !== -1 ? args[abIndex + 1] : null;
-        const result = await Contacts.list(addressBook);
-        output(result);
-      } else if (subCommand === "get") {
-        const uidIndex = args.indexOf("--uid");
-        if (uidIndex === -1) throw new Error("Missing --uid");
-        const uid = args[uidIndex + 1];
-        const abIndex = args.indexOf("--addressbook");
-        const addressBook = abIndex !== -1 ? args[abIndex + 1] : null;
-        output(await Contacts.get(uid, addressBook));
-      } else if (subCommand === "search") {
-        const queryIndex = args.indexOf("--query");
-        if (queryIndex === -1) throw new Error("Missing --query");
-        const query = args[queryIndex + 1];
-        const abIndex = args.indexOf("--addressbook");
-        const addressBook = abIndex !== -1 ? args[abIndex + 1] : null;
-        output(await Contacts.search(query, addressBook));
-      } else if (subCommand === "create") {
-        const nameIndex = args.indexOf("--name");
-        if (nameIndex === -1) throw new Error("Missing --name");
-        const fullName = args[nameIndex + 1];
-        const abIndex = args.indexOf("--addressbook");
-        const addressBook = abIndex !== -1 ? args[abIndex + 1] : null;
-        const options = {};
-        const emailIndex = args.indexOf("--email");
-        if (emailIndex !== -1) options.email = args[emailIndex + 1];
-        const emailTypeIndex = args.indexOf("--email-type");
-        if (emailTypeIndex !== -1) options.emailType = args[emailTypeIndex + 1];
-        const phoneIndex = args.indexOf("--phone");
-        if (phoneIndex !== -1) options.phone = args[phoneIndex + 1];
-        const phoneTypeIndex = args.indexOf("--phone-type");
-        if (phoneTypeIndex !== -1) options.phoneType = args[phoneTypeIndex + 1];
-        const orgIndex = args.indexOf("--organization");
-        if (orgIndex !== -1) options.organization = args[orgIndex + 1];
-        const titleIndex = args.indexOf("--title");
-        if (titleIndex !== -1) options.title = args[titleIndex + 1];
-        const noteIndex = args.indexOf("--note");
-        if (noteIndex !== -1) options.note = args[noteIndex + 1];
-        const bdayIndex = args.indexOf("--bday");
-        if (bdayIndex !== -1) options.bday = args[bdayIndex + 1];
-        const anniversaryIndex = args.indexOf("--anniversary");
-        if (anniversaryIndex !== -1)
-          options.anniversary = args[anniversaryIndex + 1];
-        const urlIndex = args.indexOf("--url");
-        if (urlIndex !== -1) options.url = args[urlIndex + 1];
-        const roleIndex = args.indexOf("--role");
-        if (roleIndex !== -1) options.role = args[roleIndex + 1];
-        const addressIndex = args.indexOf("--address");
-        if (addressIndex !== -1) options.address = args[addressIndex + 1];
-        output(await Contacts.create(fullName, addressBook, options));
-      } else if (subCommand === "edit") {
-        const uidIndex = args.indexOf("--uid");
-        if (uidIndex === -1) throw new Error("Missing --uid");
-        const uid = args[uidIndex + 1];
-        const abIndex = args.indexOf("--addressbook");
-        const addressBook = abIndex !== -1 ? args[abIndex + 1] : null;
-        const updates = {};
-        const nameIndex = args.indexOf("--name");
-        if (nameIndex !== -1) updates.fullName = args[nameIndex + 1];
-        const emailIndex = args.indexOf("--email");
-        if (emailIndex !== -1) updates.email = args[emailIndex + 1];
-        const phoneIndex = args.indexOf("--phone");
-        if (phoneIndex !== -1) updates.phone = args[phoneIndex + 1];
-        const orgIndex = args.indexOf("--organization");
-        if (orgIndex !== -1) updates.organization = args[orgIndex + 1];
-        const titleIndex = args.indexOf("--title");
-        if (titleIndex !== -1) updates.title = args[titleIndex + 1];
-        const noteIndex = args.indexOf("--note");
-        if (noteIndex !== -1) updates.note = args[noteIndex + 1];
-        const bdayIndex = args.indexOf("--bday");
-        if (bdayIndex !== -1) updates.bday = args[bdayIndex + 1];
-        const anniversaryIndex = args.indexOf("--anniversary");
-        if (anniversaryIndex !== -1)
-          updates.anniversary = args[anniversaryIndex + 1];
-        const urlIndex = args.indexOf("--url");
-        if (urlIndex !== -1) updates.url = args[urlIndex + 1];
-        const roleIndex = args.indexOf("--role");
-        if (roleIndex !== -1) updates.role = args[roleIndex + 1];
-        const addressIndex = args.indexOf("--address");
-        if (addressIndex !== -1) updates.address = args[addressIndex + 1];
-        output(await Contacts.update(uid, addressBook, updates));
-      } else if (subCommand === "delete") {
-        const uidIndex = args.indexOf("--uid");
-        if (uidIndex === -1) throw new Error("Missing --uid");
-        const uid = args[uidIndex + 1];
-        const abIndex = args.indexOf("--addressbook");
-        const addressBook = abIndex !== -1 ? args[abIndex + 1] : null;
-        output(await Contacts.delete(uid, addressBook));
-      } else {
-        throw new Error("Unknown contacts command");
-      }
-    } else {
-      console.log(
-        "Usage: node index.js <notes|files|calendar|calendars|tasks|talk|contacts|addressbooks|shares> <list|get|create|search|edit|delete|create-link> [options]"
-      );
     }
   } catch (err) {
     errorOutput(err);
+  }
+}
+async function handleNotes(subCommand, values) {
+  switch (subCommand) {
+    case "list":
+      output(await Notes.list());
+      break;
+    case "get": {
+      if (!values.id) throw new Error("Missing --id");
+      output(await Notes.get(values.id));
+      break;
+    }
+    case "create": {
+      if (!values.title || !values.content) {
+        throw new Error("Missing --title or --content arguments");
+      }
+      output(await Notes.create(values.title, values.content, values.category));
+      break;
+    }
+    case "edit": {
+      if (!values.id) throw new Error("Missing --id");
+      output(
+        await Notes.update(
+          values.id,
+          values.title,
+          values.content,
+          values.category
+        )
+      );
+      break;
+    }
+    case "delete": {
+      if (!values.id) throw new Error("Missing --id");
+      output(await Notes.delete(values.id));
+      break;
+    }
+    case "list-categories":
+      output(await Notes.listCategories());
+      break;
+    case "create-category": {
+      if (!values.name) throw new Error("Missing --name");
+      output(await Notes.createCategory(values.name));
+      break;
+    }
+    case "delete-category": {
+      if (!values.name) throw new Error("Missing --name");
+      output(await Notes.deleteCategory(values.name));
+      break;
+    }
+    case "history": {
+      if (!values.id) throw new Error("Missing --id");
+      output(await Notes.getNoteHistory(values.id));
+      break;
+    }
+    case "backup": {
+      const backup = await Notes.getBackup();
+      if (values.output) {
+        const fs2 = await import("node:fs");
+        fs2.writeFileSync(values.output, JSON.stringify(backup, null, 2));
+        output({ status: "backup-written", path: values.output });
+      } else {
+        output(backup);
+      }
+      break;
+    }
+    default:
+      throw new Error("Unknown notes command");
+  }
+}
+async function handleFiles(subCommand, values) {
+  switch (subCommand) {
+    case "list":
+      output(await Files.list(values.path || "/"));
+      break;
+    case "search": {
+      if (!values.query) throw new Error("Missing --query");
+      output(await Files.search(values.query));
+      break;
+    }
+    case "upload": {
+      if (!values.path) throw new Error("Missing --path");
+      if (values.content === void 0) throw new Error("Missing --content");
+      output(await Files.upload(values.path, values.content));
+      break;
+    }
+    case "get": {
+      if (!values.path) throw new Error("Missing --path");
+      output(await Files.get(values.path));
+      break;
+    }
+    case "delete": {
+      if (!values.path) throw new Error("Missing --path");
+      output(await Files.delete(values.path));
+      break;
+    }
+    default:
+      throw new Error("Unknown files command");
+  }
+}
+async function handleCalendar(subCommand, values) {
+  switch (subCommand) {
+    case "list": {
+      const start = values.from || (0, import_date_fns.formatISO)(/* @__PURE__ */ new Date());
+      const end = values.to || (0, import_date_fns.formatISO)((0, import_date_fns.addDays)(/* @__PURE__ */ new Date(), 7));
+      output(await CalDAV.getEvents(start, end));
+      break;
+    }
+    case "create": {
+      if (!values.summary) throw new Error("Missing --summary");
+      if (!values.start) throw new Error("Missing --start");
+      if (!values.end) throw new Error("Missing --end");
+      output(
+        await CalDAV.createEvent(
+          values.summary,
+          values.start,
+          values.end,
+          values.calendar,
+          values.description,
+          values.location
+        )
+      );
+      break;
+    }
+    case "edit": {
+      if (!values.uid) throw new Error("Missing --uid");
+      const updates = {};
+      if (values.summary !== void 0) updates.summary = values.summary;
+      if (values.start !== void 0) updates.start = values.start;
+      if (values.end !== void 0) updates.end = values.end;
+      if (values.description !== void 0)
+        updates.description = values.description;
+      if (values.location !== void 0) updates.location = values.location;
+      output(await CalDAV.updateEvent(values.uid, values.calendar, updates));
+      break;
+    }
+    case "delete": {
+      if (!values.uid) throw new Error("Missing --uid");
+      output(await CalDAV.deleteEvent(values.uid, values.calendar));
+      break;
+    }
+    case "get-color": {
+      const calendar = await CalDAV.getCalendar(values.calendar, "VEVENT");
+      output(await CalDAV.getCalendarColor(calendar.url));
+      break;
+    }
+    case "set-color": {
+      if (!values.color) throw new Error("Missing --color");
+      const calendar = await CalDAV.getCalendar(values.calendar, "VEVENT");
+      output(await CalDAV.setCalendarColor(calendar.url, values.color));
+      break;
+    }
+    default:
+      throw new Error("Unknown calendar command");
+  }
+}
+async function handleTasks(subCommand, values) {
+  switch (subCommand) {
+    case "list":
+      output(await CalDAV.getTodos(values.calendar));
+      break;
+    case "create": {
+      if (!values.title) throw new Error("Missing --title");
+      output(
+        await CalDAV.createTask(
+          values.title,
+          values.calendar,
+          values.due,
+          values.priority,
+          values.description
+        )
+      );
+      break;
+    }
+    case "edit": {
+      if (!values.uid) throw new Error("Missing --uid");
+      const updates = {};
+      if (values.title !== void 0) updates.title = values.title;
+      if (values.due !== void 0) updates.dueDate = values.due;
+      if (values.priority !== void 0) updates.priority = values.priority;
+      if (values.description !== void 0)
+        updates.description = values.description;
+      output(await CalDAV.updateTask(values.uid, values.calendar, updates));
+      break;
+    }
+    case "delete": {
+      if (!values.uid) throw new Error("Missing --uid");
+      output(await CalDAV.deleteTask(values.uid, values.calendar));
+      break;
+    }
+    case "complete": {
+      if (!values.uid) throw new Error("Missing --uid");
+      output(await CalDAV.completeTask(values.uid, values.calendar));
+      break;
+    }
+    case "get-color": {
+      const calendar = await CalDAV.getCalendar(values.calendar, "VTODO");
+      output(await CalDAV.getCalendarColor(calendar.url));
+      break;
+    }
+    case "set-color": {
+      if (!values.color) throw new Error("Missing --color");
+      const calendar = await CalDAV.getCalendar(values.calendar, "VTODO");
+      output(await CalDAV.setCalendarColor(calendar.url, values.color));
+      break;
+    }
+    default:
+      throw new Error("Unknown tasks command");
+  }
+}
+async function handleCalendars(subCommand, values) {
+  switch (subCommand) {
+    case "list": {
+      let componentType = null;
+      if (values.type === "tasks") componentType = "VTODO";
+      else if (values.type === "events") componentType = "VEVENT";
+      const calendars = await CalDAV.findCalendars(componentType);
+      output(
+        calendars.map((c) => ({
+          name: c.displayname,
+          type: c.componentType === "VTODO" ? "tasks" : "events"
+        }))
+      );
+      break;
+    }
+    default:
+      throw new Error("Unknown calendars command");
+  }
+}
+async function handleAddressBooks(subCommand, values) {
+  switch (subCommand) {
+    case "list": {
+      const addressBooks = await Contacts.findAddressBooks();
+      output(addressBooks.map((a) => ({ name: a.displayname })));
+      break;
+    }
+    default:
+      throw new Error("Unknown addressbooks command");
+  }
+}
+async function handleShares(subCommand, values) {
+  switch (subCommand) {
+    case "create-link": {
+      if (!values.path) throw new Error("Missing --path");
+      output(
+        await Shares.createLink({
+          path: values.path,
+          permissions: values.permissions || "read",
+          password: values.password || null,
+          expireDate: values.expire || null
+        })
+      );
+      break;
+    }
+    case "list":
+      output(await Shares.list({ path: values.path || null }));
+      break;
+    case "create-user": {
+      if (!values.path) throw new Error("Missing --path");
+      if (!values.user) throw new Error("Missing --user");
+      output(
+        await Shares.createUserShare({
+          path: values.path,
+          user: values.user,
+          permissions: values.permissions || "read",
+          expireDate: values.expire || null
+        })
+      );
+      break;
+    }
+    case "create-group": {
+      if (!values.path) throw new Error("Missing --path");
+      if (!values.group) throw new Error("Missing --group");
+      output(
+        await Shares.createGroupShare({
+          path: values.path,
+          group: values.group,
+          permissions: values.permissions || "read",
+          expireDate: values.expire || null
+        })
+      );
+      break;
+    }
+    case "delete": {
+      if (!values.id) throw new Error("Missing --id");
+      output(await Shares.delete({ id: values.id }));
+      break;
+    }
+    default:
+      throw new Error("Unknown shares command");
+  }
+}
+function buildTalkSettings(values) {
+  const settings = {};
+  if (values.muted !== void 0)
+    settings.muted = values.muted === "1" || values.muted === "true";
+  if (values["notification-level"] !== void 0)
+    settings.notificationLevel = values["notification-level"];
+  if (values["read-only"] !== void 0)
+    settings.readOnly = values["read-only"] === "1" || values["read-only"] === "true";
+  if (values.listable !== void 0)
+    settings.listable = values.listable === "1" || values.listable === "true";
+  if (values.favorite !== void 0)
+    settings.favorite = values.favorite === "1" || values.favorite === "true";
+  if (values.password !== void 0) settings.password = values.password;
+  return settings;
+}
+async function handleTalk(subCommand, values) {
+  switch (subCommand) {
+    case "list":
+      output(await Talk.listConversations());
+      break;
+    case "create": {
+      if (!values.name) throw new Error("Missing --name");
+      const options = {};
+      if (values.description) options.description = values.description;
+      if (values.password) options.password = values.password;
+      output(
+        await Talk.createConversation(
+          values.name,
+          values.type || "group",
+          values.invite || null,
+          options
+        )
+      );
+      break;
+    }
+    case "delete": {
+      if (!values.token) throw new Error("Missing --token");
+      output(await Talk.deleteConversation(values.token));
+      break;
+    }
+    case "get": {
+      if (!values.token) throw new Error("Missing --token");
+      output(await Talk.getConversation(values.token));
+      break;
+    }
+    case "messages": {
+      if (!values.token) throw new Error("Missing --token");
+      const limit = values.limit ? parseInt(values.limit, 10) : 50;
+      const lookIntoFuture = values["look-into-future"] ? parseInt(values["look-into-future"], 10) : 0;
+      output(
+        await Talk.listMessages(values.token, {
+          limit,
+          lookIntoFuture,
+          setReadMarker: true
+        })
+      );
+      break;
+    }
+    case "send": {
+      if (!values.token) throw new Error("Missing --token");
+      if (!values.message) throw new Error("Missing --message");
+      const replyTo = values["reply-to"] ? parseInt(values["reply-to"], 10) : null;
+      output(await Talk.sendMessage(values.token, values.message, replyTo));
+      break;
+    }
+    case "delete-message": {
+      if (!values.token) throw new Error("Missing --token");
+      if (!values["message-id"]) throw new Error("Missing --message-id");
+      output(
+        await Talk.deleteMessage(
+          values.token,
+          parseInt(values["message-id"], 10)
+        )
+      );
+      break;
+    }
+    case "edit-message": {
+      if (!values.token) throw new Error("Missing --token");
+      if (!values["message-id"]) throw new Error("Missing --message-id");
+      if (!values.message) throw new Error("Missing --message");
+      output(
+        await Talk.editMessage(
+          values.token,
+          parseInt(values["message-id"], 10),
+          values.message
+        )
+      );
+      break;
+    }
+    case "add-participant": {
+      if (!values.token) throw new Error("Missing --token");
+      if (!values.user) throw new Error("Missing --user");
+      output(
+        await Talk.addParticipant(
+          values.token,
+          values.user,
+          values.source || "users"
+        )
+      );
+      break;
+    }
+    case "enable-bot": {
+      if (!values.token) throw new Error("Missing --token");
+      if (!values["bot-id"]) throw new Error("Missing --bot-id");
+      output(
+        await Talk.enableBotInConversation(
+          values.token,
+          parseInt(values["bot-id"], 10)
+        )
+      );
+      break;
+    }
+    case "disable-bot": {
+      if (!values.token) throw new Error("Missing --token");
+      if (!values["bot-id"]) throw new Error("Missing --bot-id");
+      output(
+        await Talk.disableBotInConversation(
+          values.token,
+          parseInt(values["bot-id"], 10)
+        )
+      );
+      break;
+    }
+    case "upload-file": {
+      if (!values.token) throw new Error("Missing --token");
+      if (!values.file) throw new Error("Missing --file");
+      if (values.content === void 0) throw new Error("Missing --content");
+      output(
+        await Talk.uploadFileToConversation(
+          values.token,
+          values.file,
+          values.content
+        )
+      );
+      break;
+    }
+    case "add-reaction": {
+      if (!values.token) throw new Error("Missing --token");
+      if (!values["message-id"]) throw new Error("Missing --message-id");
+      if (!values.emoji) throw new Error("Missing --emoji");
+      output(
+        await Talk.addReaction(
+          values.token,
+          parseInt(values["message-id"], 10),
+          values.emoji
+        )
+      );
+      break;
+    }
+    case "delete-reaction": {
+      if (!values.token) throw new Error("Missing --token");
+      if (!values["message-id"]) throw new Error("Missing --message-id");
+      if (!values.emoji) throw new Error("Missing --emoji");
+      output(
+        await Talk.deleteReaction(
+          values.token,
+          parseInt(values["message-id"], 10),
+          values.emoji
+        )
+      );
+      break;
+    }
+    case "list-reactions": {
+      if (!values.token) throw new Error("Missing --token");
+      if (!values["message-id"]) throw new Error("Missing --message-id");
+      output(
+        await Talk.listReactions(
+          values.token,
+          parseInt(values["message-id"], 10)
+        )
+      );
+      break;
+    }
+    case "create-poll": {
+      if (!values.token) throw new Error("Missing --token");
+      if (!values.question) throw new Error("Missing --question");
+      if (!values.options) throw new Error("Missing --options");
+      const opts = values.options.split(",").map((o) => o.trim());
+      output(await Talk.createPoll(values.token, values.question, opts));
+      break;
+    }
+    case "get-poll": {
+      if (!values.token) throw new Error("Missing --token");
+      if (!values["poll-id"]) throw new Error("Missing --poll-id");
+      output(await Talk.getPoll(values.token, values["poll-id"]));
+      break;
+    }
+    case "close-poll": {
+      if (!values.token) throw new Error("Missing --token");
+      if (!values["poll-id"]) throw new Error("Missing --poll-id");
+      output(await Talk.closePoll(values.token, values["poll-id"]));
+      break;
+    }
+    case "publish-poll": {
+      if (!values.token) throw new Error("Missing --token");
+      if (!values["poll-id"]) throw new Error("Missing --poll-id");
+      output(await Talk.publishPoll(values.token, values["poll-id"]));
+      break;
+    }
+    case "get-poll-results": {
+      if (!values.token) throw new Error("Missing --token");
+      if (!values["poll-id"]) throw new Error("Missing --poll-id");
+      output(await Talk.getPollResults(values.token, values["poll-id"]));
+      break;
+    }
+    case "list-bots": {
+      const token = values.token || null;
+      output(await Talk.listBots(token));
+      break;
+    }
+    case "get-settings": {
+      if (!values.token) throw new Error("Missing --token");
+      output(await Talk.getSettings(values.token));
+      break;
+    }
+    case "update-settings": {
+      if (!values.token) throw new Error("Missing --token");
+      output(
+        await Talk.updateSettings(values.token, buildTalkSettings(values))
+      );
+      break;
+    }
+    case "get-guest-settings": {
+      if (!values.token) throw new Error("Missing --token");
+      output(await Talk.getGuestSettings(values.token));
+      break;
+    }
+    case "update-guest-settings": {
+      if (!values.token) throw new Error("Missing --token");
+      output(
+        await Talk.updateGuestSettings(values.token, buildTalkSettings(values))
+      );
+      break;
+    }
+    default:
+      throw new Error("Unknown talk command");
+  }
+}
+async function handleContacts(subCommand, values) {
+  switch (subCommand) {
+    case "list":
+      output(await Contacts.list(values.addressbook));
+      break;
+    case "get": {
+      if (!values.uid) throw new Error("Missing --uid");
+      output(await Contacts.get(values.uid, values.addressbook));
+      break;
+    }
+    case "search": {
+      if (!values.query) throw new Error("Missing --query");
+      output(await Contacts.search(values.query, values.addressbook));
+      break;
+    }
+    case "create": {
+      if (!values.name) throw new Error("Missing --name");
+      const options = {};
+      if (values.email) options.email = values.email;
+      if (values["email-type"]) options.emailType = values["email-type"];
+      if (values.phone) options.phone = values.phone;
+      if (values["phone-type"]) options.phoneType = values["phone-type"];
+      if (values.organization) options.organization = values.organization;
+      if (values.title) options.title = values.title;
+      if (values.note) options.note = values.note;
+      if (values.bday) options.bday = values.bday;
+      if (values.anniversary) options.anniversary = values.anniversary;
+      if (values.url) options.url = values.url;
+      if (values.role) options.role = values.role;
+      if (values.address) options.address = values.address;
+      output(await Contacts.create(values.name, values.addressbook, options));
+      break;
+    }
+    case "edit": {
+      if (!values.uid) throw new Error("Missing --uid");
+      const updates = {};
+      if (values.name !== void 0) updates.fullName = values.name;
+      if (values.email !== void 0) updates.email = values.email;
+      if (values.phone !== void 0) updates.phone = values.phone;
+      if (values.organization !== void 0)
+        updates.organization = values.organization;
+      if (values.title !== void 0) updates.title = values.title;
+      if (values.note !== void 0) updates.note = values.note;
+      if (values.bday !== void 0) updates.bday = values.bday;
+      if (values.anniversary !== void 0)
+        updates.anniversary = values.anniversary;
+      if (values.url !== void 0) updates.url = values.url;
+      if (values.role !== void 0) updates.role = values.role;
+      if (values.address !== void 0) updates.address = values.address;
+      output(await Contacts.update(values.uid, values.addressbook, updates));
+      break;
+    }
+    case "delete": {
+      if (!values.uid) throw new Error("Missing --uid");
+      output(await Contacts.delete(values.uid, values.addressbook));
+      break;
+    }
+    default:
+      throw new Error("Unknown contacts command");
   }
 }
 main();

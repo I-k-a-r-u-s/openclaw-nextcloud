@@ -119,6 +119,11 @@ node scripts/nextcloud.js <command> <subcommand> [options]
 - `notes create --title <t> --content <c> [--category <cat>]`
 - `notes edit --id <id> [--title <t>] [--content <c>] [--category <cat>]`
 - `notes delete --id <id>`
+- `notes list-categories`
+- `notes create-category --name <n>`
+- `notes delete-category --name <n>`
+- `notes history --id <id>`
+- `notes backup [--output <path>]`
 
 ### Tasks
 - `tasks list [--calendar <c>]`
@@ -126,12 +131,16 @@ node scripts/nextcloud.js <command> <subcommand> [options]
 - `tasks edit --uid <u> [--calendar <c>] [--title <t>] [--due <d>] [--priority <p>] [--description <d>]`
 - `tasks delete --uid <u> [--calendar <c>]`
 - `tasks complete --uid <u> [--calendar <c>]`
+- `tasks get-color [--calendar <c>]`
+- `tasks set-color [--calendar <c>] --color <#RRGGBB>`
 
 ### Calendar Events
 - `calendar list [--from <iso>] [--to <iso>]` (Defaults to next 7 days)
 - `calendar create --summary <s> --start <iso> --end <iso> [--calendar <c>] [--description <d>] [--location <l>]`
 - `calendar edit --uid <u> [--calendar <c>] [--summary <s>] [--start <iso>] [--end <iso>] [--description <d>] [--location <l>]`
 - `calendar delete --uid <u> [--calendar <c>]`
+- `calendar get-color [--calendar <c>]`
+- `calendar set-color [--calendar <c>] --color <#RRGGBB>`
 
 ### Calendars (list available calendars)
 - `calendars list [--type <tasks|events>]`
@@ -160,8 +169,8 @@ File listings and search results include a `fileId` (when the server returns one
 - `contacts list [--addressbook <ab>]`
 - `contacts get --uid <u> [--addressbook <ab>]`
 - `contacts search --query <q> [--addressbook <ab>]`
-- `contacts create --name <n> [--addressbook <ab>] [--email <e>] [--phone <p>] [--organization <o>] [--title <t>] [--note <n>]`
-- `contacts edit --uid <u> [--addressbook <ab>] [--name <n>] [--email <e>] [--phone <p>] [--organization <o>] [--title <t>] [--note <n>]`
+- `contacts create --name <n> [--addressbook <ab>] [--email <e>] [--email-type <t>] [--phone <p>] [--phone-type <t>] [--organization <o>] [--title <t>] [--note <n>] [--bday <d>] [--anniversary <d>] [--url <u>] [--role <r>] [--address <street|city|region|postal|country>]`
+- `contacts edit --uid <u> [--addressbook <ab>] [--name <n>] [--email <e>] [--phone <p>] [--organization <o>] [--title <t>] [--note <n>] [--bday <d>] [--anniversary <d>] [--url <u>] [--role <r>] [--address <parts>]`
 - `contacts delete --uid <u> [--addressbook <ab>]`
 
 ### Address Books (list available address books)
@@ -169,7 +178,7 @@ File listings and search results include a `fileId` (when the server returns one
 
 ### Chat/Conversations (Talk API)
 - `talk list` - List all conversations
-- `talk create --name <n> [--type group|public] [--description <d>] [--password <pw>]` - Create new conversation
+- `talk create --name <n> [--type group|public|note-to-self] [--description <d>] [--password <pw>] [--invite <user>]` - Create new conversation
 - `talk get --token <t>` - Get conversation details
 - `talk delete --token <t>` - Delete conversation
 - `talk messages --token <t> [--limit <n>] [--look-into-future <0|1>]` - List messages
@@ -180,6 +189,19 @@ File listings and search results include a `fileId` (when the server returns one
 - `talk list-bots [--token <t>]` - List bots (server or room-specific)
 - `talk enable-bot --token <t> --bot-id <id>` - Enable bot in conversation
 - `talk disable-bot --token <t> --bot-id <id>` - Disable bot in conversation
+- `talk upload-file --token <t> --file <path> --content <data>` - Upload and share a file in the conversation
+- `talk add-reaction --token <t> --message-id <id> --emoji <e>` - Add reaction to a message
+- `talk delete-reaction --token <t> --message-id <id> --emoji <e>` - Remove reaction from a message
+- `talk list-reactions --token <t> --message-id <id>` - List reactions on a message
+- `talk create-poll --token <t> --question <q> --options "opt1,opt2,..."` - Create a poll
+- `talk get-poll --token <t> --poll-id <id>` - Get poll details
+- `talk close-poll --token <t> --poll-id <id>` - Close a poll
+- `talk publish-poll --token <t> --poll-id <id>` - Publish poll results
+- `talk get-poll-results --token <t> --poll-id <id>` - Get poll results
+- `talk get-settings --token <t>` - Get conversation settings
+- `talk update-settings --token <t> [--muted <0|1>] [--notification-level <level>] [--read-only <0|1>] [--listable <0|1>] [--favorite <0|1>] [--password <pw>]` - Update conversation settings
+- `talk get-guest-settings --token <t>` - Get guest settings
+- `talk update-guest-settings --token <t> [same options as update-settings]` - Update guest settings
 
 ### Nextcloud Bot Configuration
 
@@ -209,7 +231,8 @@ This skill integrates with Nextcloud Talk and can work with an existing bot inst
 
 When creating new conversations, the skill can automatically enable the configured bot:
 ```bash
-node scripts/nextcloud.js talk create --name "Project Alpha" --type public --enable-bot
+node scripts/nextcloud.js talk create --name "Project Alpha" --type public
+node scripts/nextcloud.js talk enable-bot --token <room-token> --bot-id <bot-id>
 ```
 
 This ensures the bot receives webhooks and can participate in the conversation.
@@ -346,17 +369,23 @@ Date inputs (`--due`, `--start`, `--end`, `--from`, `--to`) accept either ISO 86
       "addressBook": "Address Book Name",
       "fullName": "John Doe",
       "name": "Doe;John;;;",
-      "phones": ["+1234567890"],
-      "emails": ["john@example.com"],
+      "phones": [{"types": ["TYPE=WORK"], "value": "+1234567890"}],
+      "emails": [{"types": ["TYPE=WORK"], "value": "john@example.com"}],
+      "addresses": [{"types": ["TYPE=WORK"], "street": "123 Main St", "city": "Springfield", "region": "IL", "postalCode": "62701", "country": "USA"}],
       "organization": "ACME Inc",
       "title": "Developer",
+      "url": "https://example.com",
+      "role": "Engineer",
+      "bday": "1990-05-15",
+      "anniversary": "2015-06-20",
       "note": "Met at conference"
     }
   ]
 }
 ```
-- `phones`: Array of phone numbers or null
-- `emails`: Array of email addresses or null
+- `phones`: Array of `{types, value}` objects or null
+- `emails`: Array of `{types, value}` objects or null
+- `addresses`: Array of `{types, street, city, region, postalCode, country}` objects or null
 - `name`: Structured name in vCard format (Last;First;Middle;Prefix;Suffix)
 
 ### General Format
