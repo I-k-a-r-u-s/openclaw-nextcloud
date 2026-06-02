@@ -383,70 +383,41 @@ export const Talk = {
   },
 
   async getSettings(token) {
-    if (!token) throw new Error("Conversation token is required.");
-
+    // Settings are accessed via the room endpoint
+    // Note: Some settings (muted, password, guest settings) may not be updatable
+    // via the user app password API due to permission restrictions.
     const data = await request(`/ocs/v2.php/apps/spreed/api/v4/room/${token}`, {
       headers: { Accept: "application/json" },
     });
-
-    // Extract settings from the room object
-    const room = data.ocs?.data || {};
-    return {
-      muted: room.muted || false,
-      notificationLevel: room.notificationLevel || 0,
-      readOnly: room.readOnly || 0,
-      listable: room.listable || 0,
-      favorite: room.favorite || 0,
-      password: room.password !== null,
-    };
+    return data.ocs?.data || {};
   },
 
   async updateSettings(token, settings) {
-    if (!token) throw new Error("Conversation token is required.");
-    if (!settings || typeof settings !== "object") {
-      throw new Error("Settings object is required.");
-    }
-
+    // Update room settings via PATCH
+    // Note: Not all settings may be supported via this endpoint.
     const data = await request(`/ocs/v2.php/apps/spreed/api/v4/room/${token}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(settings),
     });
-
     return data.ocs?.data || {};
   },
 
   async getGuestSettings(token) {
-    if (!token) throw new Error("Conversation token is required.");
-
-    // Guest settings are part of the room object
+    // Guest settings are accessed via the room endpoint
     const data = await request(`/ocs/v2.php/apps/spreed/api/v4/room/${token}`, {
       headers: { Accept: "application/json" },
     });
-
-    const room = data.ocs?.data || {};
-    return {
-      muted: room.muted || false,
-      notificationLevel: room.notificationLevel || 0,
-      readOnly: room.readOnly || 0,
-      listable: room.listable || 0,
-      favorite: room.favorite || 0,
-      password: room.password !== null,
-    };
+    return data.ocs?.data || {};
   },
 
   async updateGuestSettings(token, settings) {
-    if (!token) throw new Error("Conversation token is required.");
-    if (!settings || typeof settings !== "object") {
-      throw new Error("Settings object is required.");
-    }
-
+    // Update guest settings via PATCH
     const data = await request(`/ocs/v2.php/apps/spreed/api/v4/room/${token}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(settings),
     });
-
     return data.ocs?.data || {};
   },
 };

@@ -19139,25 +19139,12 @@ var Talk = {
     return data.ocs?.data || {};
   },
   async getSettings(token) {
-    if (!token) throw new Error("Conversation token is required.");
     const data = await request(`/ocs/v2.php/apps/spreed/api/v4/room/${token}`, {
       headers: { Accept: "application/json" }
     });
-    const room = data.ocs?.data || {};
-    return {
-      muted: room.muted || false,
-      notificationLevel: room.notificationLevel || 0,
-      readOnly: room.readOnly || 0,
-      listable: room.listable || 0,
-      favorite: room.favorite || 0,
-      password: room.password !== null
-    };
+    return data.ocs?.data || {};
   },
   async updateSettings(token, settings) {
-    if (!token) throw new Error("Conversation token is required.");
-    if (!settings || typeof settings !== "object") {
-      throw new Error("Settings object is required.");
-    }
     const data = await request(`/ocs/v2.php/apps/spreed/api/v4/room/${token}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -19166,25 +19153,12 @@ var Talk = {
     return data.ocs?.data || {};
   },
   async getGuestSettings(token) {
-    if (!token) throw new Error("Conversation token is required.");
     const data = await request(`/ocs/v2.php/apps/spreed/api/v4/room/${token}`, {
       headers: { Accept: "application/json" }
     });
-    const room = data.ocs?.data || {};
-    return {
-      muted: room.muted || false,
-      notificationLevel: room.notificationLevel || 0,
-      readOnly: room.readOnly || 0,
-      listable: room.listable || 0,
-      favorite: room.favorite || 0,
-      password: room.password !== null
-    };
+    return data.ocs?.data || {};
   },
   async updateGuestSettings(token, settings) {
-    if (!token) throw new Error("Conversation token is required.");
-    if (!settings || typeof settings !== "object") {
-      throw new Error("Settings object is required.");
-    }
     const data = await request(`/ocs/v2.php/apps/spreed/api/v4/room/${token}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
