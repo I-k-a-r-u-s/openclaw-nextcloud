@@ -19145,12 +19145,57 @@ var Talk = {
     return data.ocs?.data || {};
   },
   async updateSettings(token, settings) {
-    const data = await request(`/ocs/v2.php/apps/spreed/api/v4/room/${token}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(settings)
-    });
-    return data.ocs?.data || {};
+    const results = [];
+    for (const [key, value] of Object.entries(settings)) {
+      let result;
+      switch (key) {
+        case "favorite":
+          result = await request(
+            `/ocs/v2.php/apps/spreed/api/v4/room/${token}/favorite`,
+            { method: value ? "POST" : "DELETE" }
+          );
+          break;
+        case "notificationLevel":
+          result = await request(
+            `/ocs/v2.php/apps/spreed/api/v4/room/${token}/notify`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ level: value })
+            }
+          );
+          break;
+        case "readOnly":
+          result = await request(
+            `/ocs/v2.php/apps/spreed/api/v4/room/${token}/read-only`,
+            {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ state: value })
+            }
+          );
+          break;
+        case "password":
+          result = await request(
+            `/ocs/v2.php/apps/spreed/api/v4/room/${token}/password`,
+            {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ password: value })
+            }
+          );
+          break;
+        case "listable":
+        case "muted":
+        default:
+          result = {
+            error: `Setting '${key}' cannot be updated via user app password API`
+          };
+          break;
+      }
+      results.push({ setting: key, result });
+    }
+    return results;
   },
   async getGuestSettings(token) {
     const data = await request(`/ocs/v2.php/apps/spreed/api/v4/room/${token}`, {
@@ -19159,12 +19204,7 @@ var Talk = {
     return data.ocs?.data || {};
   },
   async updateGuestSettings(token, settings) {
-    const data = await request(`/ocs/v2.php/apps/spreed/api/v4/room/${token}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(settings)
-    });
-    return data.ocs?.data || {};
+    return this.updateSettings(token, settings);
   }
 };
 

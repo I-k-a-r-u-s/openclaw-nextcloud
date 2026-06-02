@@ -383,9 +383,7 @@ export const Talk = {
   },
 
   async getSettings(token) {
-    // Settings are accessed via the room endpoint
-    // Note: Some settings (muted, password, guest settings) may not be updatable
-    // via the user app password API due to permission restrictions.
+    // Get room details which include most settings
     const data = await request(`/ocs/v2.php/apps/spreed/api/v4/room/${token}`, {
       headers: { Accept: "application/json" },
     });
@@ -393,18 +391,70 @@ export const Talk = {
   },
 
   async updateSettings(token, settings) {
-    // Update room settings via PATCH
-    // Note: Not all settings may be supported via this endpoint.
-    const data = await request(`/ocs/v2.php/apps/spreed/api/v4/room/${token}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(settings),
-    });
-    return data.ocs?.data || {};
+    // Update room settings via the correct endpoints
+    // Only supported settings can be updated via user app password:
+    // - favorite: use /favorite endpoint (POST/DELETE)
+    // - notificationLevel: use /notify endpoint (POST)
+    // - read-only: use /read-only endpoint (PUT)
+    // - password: use /password endpoint (PUT)
+    // - public: use /public endpoint (POST/DELETE)
+
+    const results = [];
+    for (const [key, value] of Object.entries(settings)) {
+      let result;
+      switch (key) {
+        case "favorite":
+          result = await request(
+            `/ocs/v2.php/apps/spreed/api/v4/room/${token}/favorite`,
+            { method: value ? "POST" : "DELETE" },
+          );
+          break;
+        case "notificationLevel":
+          result = await request(
+            `/ocs/v2.php/apps/spreed/api/v4/room/${token}/notify`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ level: value }),
+            },
+          );
+          break;
+        case "readOnly":
+          result = await request(
+            `/ocs/v2.php/apps/spreed/api/v4/room/${token}/read-only`,
+            {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ state: value }),
+            },
+          );
+          break;
+        case "password":
+          result = await request(
+            `/ocs/v2.php/apps/spreed/api/v4/room/${token}/password`,
+            {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ password: value }),
+            },
+          );
+          break;
+        case "listable":
+        case "muted":
+        default:
+          result = {
+            error: `Setting '${key}' cannot be updated via user app password API`,
+          };
+          break;
+      }
+      results.push({ setting: key, result });
+    }
+
+    return results;
   },
 
   async getGuestSettings(token) {
-    // Guest settings are accessed via the room endpoint
+    // Get room details for guest-related settings
     const data = await request(`/ocs/v2.php/apps/spreed/api/v4/room/${token}`, {
       headers: { Accept: "application/json" },
     });
@@ -412,12 +462,8 @@ export const Talk = {
   },
 
   async updateGuestSettings(token, settings) {
-    // Update guest settings via PATCH
-    const data = await request(`/ocs/v2.php/apps/spreed/api/v4/room/${token}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(settings),
-    });
-    return data.ocs?.data || {};
+    // Guest settings are updated via the same endpoints as regular settings
+    // but with different semantics (applies to guests, not the user)
+    return this.updateSettings(token, settings);
   },
 };
