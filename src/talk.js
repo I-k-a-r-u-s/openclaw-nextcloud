@@ -439,7 +439,32 @@ export const Talk = {
             },
           );
           break;
+        case "public":
+          result = await request(
+            `/ocs/v2.php/apps/spreed/api/v4/room/${token}/public`,
+            { method: value ? "POST" : "DELETE" },
+          );
+          break;
         case "listable":
+          result = await request(
+            `/ocs/v2.php/apps/spreed/api/v4/room/${token}/listable`,
+            {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ scope: value }),
+            },
+          );
+          break;
+        case "defaultPermissions":
+          result = await request(
+            `/ocs/v2.php/apps/spreed/api/v4/room/${token}/permissions/default`,
+            {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ permissions: value }),
+            },
+          );
+          break;
         case "muted":
         default:
           result = {

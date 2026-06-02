@@ -57,6 +57,8 @@ const COMMON_OPTIONS = {
   "read-only": { type: "string" },
   listable: { type: "string" },
   favorite: { type: "string" },
+  public: { type: "string" },
+  "default-permissions": { type: "string" },
   output: { type: "string" },
   email: { type: "string" },
   "email-type": { type: "string" },
@@ -447,6 +449,10 @@ function buildTalkSettings(values) {
     settings.listable = values.listable === "1" || values.listable === "true";
   if (values.favorite !== undefined)
     settings.favorite = values.favorite === "1" || values.favorite === "true";
+  if (values.public !== undefined)
+    settings.public = values.public === "1" || values.public === "true";
+  if (values["default-permissions"] !== undefined)
+    settings.defaultPermissions = values["default-permissions"];
   if (values.password !== undefined) settings.password = values.password;
   return settings;
 }

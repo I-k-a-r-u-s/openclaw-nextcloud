@@ -199,14 +199,16 @@ File listings and search results include a `fileId` (when the server returns one
 - `talk publish-poll --token <t> --poll-id <id>` - Publish poll results
 - `talk get-poll-results --token <t> --poll-id <id>` - Get poll results
 - `talk get-settings --token <t>` - Get conversation settings
-- `talk update-settings --token <t> [--notification-level <level>] [--read-only <0|1>] [--listable <0|1>] [--favorite <0|1>]` - Update conversation settings
+- `talk update-settings --token <t> [--notification-level <level>] [--read-only <0|1>] [--listable <0|1>] [--favorite <0|1>] [--public <0|1>] [--default-permissions <p>]` - Update conversation settings
 - `talk get-guest-settings --token <t>` - Get guest settings
 - `talk update-guest-settings --token <t> [same options as update-settings]` - Update guest settings
 
 **Note:** Some settings cannot be updated via the API due to Nextcloud permission restrictions:
 - `muted`: User-specific preference, requires different endpoint (not available via user app password)
 - `password`: Cannot be set/updated via API - must be done in Nextcloud UI
-- `guest` settings (Guest Join via Link, Open Conversation): Require admin permissions
+
+**Call Permissions:**
+Setting call permissions (start/join call) is **no longer supported**. The Talk API v4 endpoint for this (`/permissions/call`) is a no-op since Nextcloud Talk 20 and will return a 400 error. This must be configured manually in the Nextcloud UI.
 
 ### Nextcloud Bot Configuration
 

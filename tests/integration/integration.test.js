@@ -91,19 +91,33 @@ test("Integration tests", { skip: !hasCredentials }, async () => {
   });
 
   await describe("Calendars", async () => {
+    let testCalendarName = null;
+
     await test("list calendars", async () => {
       const result = await CalDAV.findCalendars();
       assert.ok(Array.isArray(result));
+      // Use the user's Personal calendar for testing
+      // This is typically guaranteed to be writable
+      const personalCal = result.find(
+        (c) =>
+          c.displayname === "Personal" || c.displayname === "Personal (me)",
+      );
+      testCalendarName =
+        personalCal?.displayname || result[0]?.displayname || null;
     });
 
     await test("create event", async () => {
+      if (!testCalendarName) {
+        this.skip();
+        return;
+      }
       const start = new Date(Date.now() + 3600000).toISOString();
       const end = new Date(Date.now() + 7200000).toISOString();
       const result = await CalDAV.createEvent(
         `Test Event ${timestamp}`,
         start,
         end,
-        null,
+        testCalendarName,
         "Test description",
         "Test location",
       );
@@ -220,6 +234,69 @@ test("Integration tests", { skip: !hasCredentials }, async () => {
         "Hello from test suite!",
       );
       assert.ok(result);
+    });
+
+    await test("get conversation settings", async () => {
+      if (!testRoomToken) return;
+      const result = await Talk.getSettings(testRoomToken);
+      assert.ok(result);
+      assert.ok(result.token === testRoomToken);
+    });
+
+    await test("update settings - notification level", async () => {
+      if (!testRoomToken) return;
+      const result = await Talk.updateSettings(testRoomToken, {
+        notificationLevel: "1",
+      });
+      assert.ok(Array.isArray(result));
+    });
+
+    await test("update settings - read only", async () => {
+      if (!testRoomToken) return;
+      const result = await Talk.updateSettings(testRoomToken, {
+        readOnly: "1",
+      });
+      assert.ok(Array.isArray(result));
+    });
+
+    await test("update settings - favorite", async () => {
+      if (!testRoomToken) return;
+      const result = await Talk.updateSettings(testRoomToken, {
+        favorite: "1",
+      });
+      assert.ok(Array.isArray(result));
+    });
+
+    await test("update settings - listable (open conversation)", async () => {
+      if (!testRoomToken) return;
+      const result = await Talk.updateSettings(testRoomToken, {
+        listable: "1",
+      });
+      assert.ok(Array.isArray(result));
+    });
+
+    await test("update settings - listable (open conversation)", async () => {
+      if (!testRoomToken) return;
+      const result = await Talk.updateSettings(testRoomToken, {
+        listable: "1",
+      });
+      assert.ok(Array.isArray(result));
+    });
+
+    await test("update settings - default permissions", async () => {
+      if (!testRoomToken) return;
+      const result = await Talk.updateSettings(testRoomToken, {
+        defaultPermissions: "128", // Post chat message
+      });
+      assert.ok(Array.isArray(result));
+    });
+
+    await test("update settings - public (guest join)", async () => {
+      if (!testRoomToken) return;
+      const result = await Talk.updateSettings(testRoomToken, {
+        public: "1",
+      });
+      assert.ok(Array.isArray(result));
     });
 
     await test("list messages", async () => {

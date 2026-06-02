@@ -19185,7 +19185,32 @@ var Talk = {
             }
           );
           break;
+        case "public":
+          result = await request(
+            `/ocs/v2.php/apps/spreed/api/v4/room/${token}/public`,
+            { method: value ? "POST" : "DELETE" }
+          );
+          break;
         case "listable":
+          result = await request(
+            `/ocs/v2.php/apps/spreed/api/v4/room/${token}/listable`,
+            {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ scope: value })
+            }
+          );
+          break;
+        case "defaultPermissions":
+          result = await request(
+            `/ocs/v2.php/apps/spreed/api/v4/room/${token}/permissions/default`,
+            {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ permissions: value })
+            }
+          );
+          break;
         case "muted":
         default:
           result = {
@@ -19655,6 +19680,8 @@ var COMMON_OPTIONS = {
   "read-only": { type: "string" },
   listable: { type: "string" },
   favorite: { type: "string" },
+  public: { type: "string" },
+  "default-permissions": { type: "string" },
   output: { type: "string" },
   email: { type: "string" },
   "email-type": { type: "string" },
@@ -20031,6 +20058,10 @@ function buildTalkSettings(values) {
     settings.listable = values.listable === "1" || values.listable === "true";
   if (values.favorite !== void 0)
     settings.favorite = values.favorite === "1" || values.favorite === "true";
+  if (values.public !== void 0)
+    settings.public = values.public === "1" || values.public === "true";
+  if (values["default-permissions"] !== void 0)
+    settings.defaultPermissions = values["default-permissions"];
   if (values.password !== void 0) settings.password = values.password;
   return settings;
 }

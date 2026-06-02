@@ -15,6 +15,10 @@ A Node.js CLI tool for interacting with Nextcloud services including notes, file
 - **Contacts** - Full contact management via CardDAV
 - **Chat/Conversations** - Manage Talk conversations, send messages, and integrate with Nextcloud bots
 
+**Note on Call Permissions:** The `--call-permissions` setting was removed as the underlying Nextcloud Talk API endpoint (`/permissions/call`) is no-op since Nextcloud Talk 20. Call permissions must be configured manually in the Nextcloud UI.
+
+**Note on Calendar Permissions:** For calendar event/task creation to work, the user's default calendar must have write permissions. The skill automatically uses the "Personal" calendar if available, otherwise falls back to the first available calendar.
+
 ## Prerequisites
 
 - Node.js 20 or higher
@@ -218,6 +222,40 @@ node scripts/nextcloud.js talk list-bots
 
 # Enable a bot in a conversation
 node scripts/nextcloud.js talk enable-bot --token ABC123 --bot-id 5
+
+### Conversation Settings
+
+Update conversation settings using `talk update-settings`:
+
+```bash
+# Update notification level
+node scripts/nextcloud.js talk update-settings --token ABC123 --notification-level 1
+
+# Set read-only mode
+node scripts/nextcloud.js talk update-settings --token ABC123 --read-only 1
+
+# Favorite a conversation
+node scripts/nextcloud.js talk update-settings --token ABC123 --favorite 1
+
+# Enable guest join via link
+node scripts/nextcloud.js talk update-settings --token ABC123 --public 1
+
+# Make conversation searchable for regular users
+node scripts/nextcloud.js talk update-settings --token ABC123 --listable 1
+
+# Set default permissions for new participants
+node scripts/nextcloud.js talk update-settings --token ABC123 --default-permissions 128
+```
+
+**Available Settings:**
+| Setting | Values | Description |
+|---------|--------|-------------|
+| `notification-level` | `0`, `1`, `2`, `3` | Default, Always notify, Notify on mention, Never notify |
+| `read-only` | `0`, `1` | Read-write or read-only |
+| `favorite` | `0`, `1` | Remove from or add to favorites |
+| `public` | `0`, `1` | Disable or enable guest join via link |
+| `listable` | `0`, `1`, `2` | Participants only, Regular users only, Everyone |
+| `default-permissions` | Integer | Combined permission flags (e.g., `128` for chat messages)
 ```
 
 **Bot Setup Required:** For bot features, install a bot on your Nextcloud server first (requires admin SSH access):
