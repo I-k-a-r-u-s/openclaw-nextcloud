@@ -1,23 +1,23 @@
 # Nextcloud API Audit Document
 
 **Project:** OpenClaw Nextcloud CLI Skill  
-**Date:** 2026-05-31  
-**Source File:** `/Users/oberon/Documents/Zed-Projects/openclaw-nextcloud/index.js`  
+**Date:** 2026-10-14 (re-audit; original audit 2026-05-31)  
+**Source:** Modular `src/` tree (`src/index.js`, `src/talk.js`, `src/notes.js`, `src/files.js`, `src/caldav.js`, `src/contacts.js`, `src/shares.js`) — formerly the monolithic `index.js` (split in `6929fc0`)  
 **Reference:** https://nextcloud-talk.readthedocs.io/en/latest/
 
 ---
 
 ## Executive Summary
 
-The current implementation covers **6 major service areas** with varying levels of API completeness. The codebase implements core CRUD operations for Notes, Files (WebDAV), CalDAV (events & tasks), CardDAV (contacts), and provides partial coverage of Talk API v4 and Shares API.
+The current implementation covers **6 major service areas** with varying levels of API completeness. The codebase implements core CRUD operations for Notes, Files (WebDAV), CalDAV (events & tasks), CardDAV (contacts), and provides broad coverage of the Talk API v4 surface (chat, reactions, poll lifecycle, room settings, bots) alongside core Shares functionality.
 
-**Overall Coverage Estimate:**
-- **Notes API:** ~90% complete
-- **Files API:** ~60% complete
-- **CalDAV API:** ~75% complete  
-- **CardDAV API:** ~70% complete
-- **Talk API v4:** ~40% complete
-- **Shares API:** ~50% complete
+**Overall Coverage Estimate (updated 2026-10-14):**
+- **Notes API:** ~95% complete (categories, history, and export backup implemented since the original audit)
+- **Files API:** ~60% complete (unchanged)
+- **CalDAV API:** ~80% complete (calendar color get/set added)
+- **CardDAV API:** ~85% complete (extended vCard fields added: BDAY, ANNIVERSARY, URL, ADR, ROLE, typed TEL/EMAIL)
+- **Talk API v4:** ~60% complete (reactions, poll lifecycle, room settings, and chat file sharing added)
+- **Shares API:** ~50% complete (unchanged)
 
 ---
 
@@ -33,12 +33,18 @@ The current implementation covers **6 major service areas** with varying levels 
 | POST | `/notes` | `Notes.create(title, content, category)` |
 | PUT | `/notes/{id}` | `Notes.update(id, title, content, category)` |
 | DELETE | `/notes/{id}` | `Notes.delete(id)` |
+| GET | `/categories` | `Notes.listCategories()` |
+| POST | `/categories` | `Notes.createCategory(name)` |
+| DELETE | `/categories/{name}` | `Notes.deleteCategory(name)` |
+| GET | `/notes/{id}/history` | `Notes.getNoteHistory(id)` |
+| GET | `/notes?format=backup` | `Notes.getBackup()` |
 
 **Features:**
 - Full CRUD operations on notes
 - Support for title, content, and category fields
 - Modified timestamp handling
 - JSON response parsing
+- Category list/create/delete, per-note history listing, and full export backup (added 2026-06; export-only — no restore/import yet). All three degrade gracefully with a structured error when the server returns 404
 
 ---
 
@@ -87,11 +93,13 @@ The current implementation covers **6 major service areas** with varying levels 
 | POST | `/spreed/api/v1/chat/{token}` | `Talk.sendMessage()` |
 | DELETE | `/spreed/api/v1/chat/{token}/{messageId}` | `Talk.deleteMessage()` |
 | PUT | `/spreed/api/v1/chat/{token}/{messageId}` | `Talk.editMessage()` |
+| POST | `/spreed/api/v1/chat/{token}/share` | `Talk.uploadFileToConversation()` (WebDAV `PUT` to `Talk/` folder + share) |
 
 **Features:**
 - Message listing with pagination and read markers
 - Send messages with reply-to support
 - Edit and delete messages
+- Upload files to the conversation's `Talk/` WebDAV folder and share them into the chat (`talk upload-file`)
 - URL parameter handling (lookIntoFuture, limit, setReadMarker)
 
 ---
@@ -126,6 +134,8 @@ The current implementation covers **6 major service areas** with varying levels 
 | REPORT | `/remote.php/dav/calendars/{user}/{calendar}/` | `CalDAV.getEvents()` |
 | PUT | Calendar resource | `CalDAV.createEvent()`, `CalDAV.updateEvent()` |
 | DELETE | Calendar resource | `CalDAV.deleteEvent()` |
+| PROPFIND | Calendar collection | `CalDAV.getCalendarColor()` (`cal:calendar-color`) |
+| PROPPATCH | Calendar collection | `CalDAV.setCalendarColor()` (`cal:calendar-color`) |
 
 **Features:**
 - Calendar discovery with component filtering (VEVENT, VTODO)
@@ -134,6 +144,7 @@ The current implementation covers **6 major service areas** with varying levels 
 - Event updates with ETag handling
 - Event deletion
 - iCalendar parsing via regex (summary, description, location, dtstart, dtend)
+- Calendar display color get/set (`calendar get-color` / `set-color`, added 2026-06)
 
 ---
 
@@ -153,6 +164,7 @@ The current implementation covers **6 major service areas** with varying levels 
 - Task completion status management
 - Task CRUD operations with ETag support
 - iCalendar VTODO parsing
+- Task calendar display color get/set (`tasks get-color` / `set-color`)
 
 ---
 
@@ -168,7 +180,8 @@ The current implementation covers **6 major service areas** with varying levels 
 
 **Features:**
 - Address book discovery
-- vCard parsing via regex (FN, N, TEL, EMAIL, ORG, TITLE, NOTE)
+- vCard parsing via regex (FN, N, TEL, EMAIL, ORG, TITLE, NOTE, BDAY, ANNIVERSARY, URL, ROLE, ADR)
+- Typed TEL/EMAIL/ADR values parsed on read via `getFieldWithTypes()`; extended fields (BDAY, ANNIVERSARY, URL, ROLE, ADR) writable on create/edit (added 2026-06)
 - Contact creation with UID generation
 - Contact update with ETag handling
 - Contact deletion
@@ -178,14 +191,16 @@ The current implementation covers **6 major service areas** with varying levels 
 
 ## 2. Partially Implemented Features
 
+> **2026-10-14 note:** Sections 2.3 (Reactions) and 2.10 (Settings) are now **fully implemented**; they are kept in place to preserve section numbering across audits.
+
 ### 2.1 Talk API v4 - Participant Management
 **Status:** ⚠️ Partial (Only Bot Participation)  
 **Implemented:**
 | Method | Endpoint | Function |
 |--------|----------|----------|
 | POST | `/spreed/api/v4/room/{token}/participants/participant` | `Talk.addParticipant()` |
-| PUT | `/spreed/api/v4/room/{token}/bots/{botId}` | `Talk.enableBotInConversation()` |
-| DELETE | `/spreed/api/v4/room/{token}/bots/{botId}` | `Talk.disableBotInConversation()` |
+| PUT | `/spreed/api/v1/bot/{token}/{botId}` | `Talk.enableBotInConversation()` |
+| DELETE | `/spreed/api/v1/bot/{token}/{botId}` | `Talk.disableBotInConversation()` |
 
 **Missing Endpoints:**
 | Method | Endpoint | Description | Complexity |
@@ -225,41 +240,40 @@ The current implementation covers **6 major service areas** with varying levels 
 ---
 
 ### 2.3 Talk API v4 - Reaction Management
-**Status:** ⚠️ Not Implemented  
-**Available Endpoints (Not Implemented):**
+**Status:** ✅ Implemented (added 2026-06 in `92ac079`; exposed as `talk add-reaction` / `delete-reaction` / `list-reactions`)  
+**Implemented:**
+| Method | Endpoint | Function |
+|--------|----------|----------|
+| POST | `/spreed/api/v1/chat/{token}/message/{messageId}/reaction/{emoji}` | `Talk.addReaction()` |
+| DELETE | `/spreed/api/v1/chat/{token}/message/{messageId}/reaction/{emoji}` | `Talk.deleteReaction()` |
+| GET | `/spreed/api/v1/chat/{token}/message/{messageId}/reactions` | `Talk.listReactions()` |
+
+**Remaining (Not Implemented):**
 | Method | Endpoint | Description | Complexity |
 |--------|----------|-------------|------------|
-| POST | `/spreed/api/v1/chat/{token}/message/{messageId}/reaction/{emoji}` | Add reaction to message | Low |
-| DELETE | `/spreed/api/v1/chat/{token}/message/{messageId}/reaction/{emoji}` | Remove reaction from message | Low |
-| GET | `/spreed/api/v1/chat/{token}/message/{messageId}/reactions` | List message reactions | Low |
 | GET | `/spreed/api/v1/chat/{token}/message/{messageId}/reactions/{emoji}` | Check if user reacted | Low |
-
-**Complexity Estimate:** **Low**  
-**Estimate Reasoning:**
-- Simple emoji string-based reaction system
-- No complex parsing required
-- Standard CRUD operations
 
 ---
 
 ### 2.4 Talk API v4 - Poll Management
-**Status:** ⚠️ Not Implemented  
-**Available Endpoints (Not Implemented):**
+**Status:** ⚠️ Partially Implemented (added 2026-06 in `bd1e52d`; voting still missing)  
+**Implemented:**
+| Method | Endpoint | Function |
+|--------|----------|----------|
+| POST | `/spreed/api/v4/poll` | `Talk.createPoll()` (`conversationId` in JSON body) |
+| GET | `/spreed/api/v4/poll/{pollId}?conversationId={token}` | `Talk.getPoll()` |
+| DELETE | `/spreed/api/v4/poll/{pollId}?conversationId={token}` | `Talk.closePoll()` |
+| POST | `/spreed/api/v4/poll/{pollId}/publish?conversationId={token}` | `Talk.publishPoll()` |
+| GET | `/spreed/api/v4/poll/{pollId}/results?conversationId={token}` | `Talk.getPollResults()` |
+
+**Remaining (Not Implemented):**
 | Method | Endpoint | Description | Complexity |
 |--------|----------|-------------|------------|
-| POST | `/spreed/api/v4/poll/{token}` | Create poll in conversation | Medium |
-| POST | `/spreed/api/v4/poll/{token}/close` | Close poll | Low |
-| GET | `/spreed/api/v4/poll/{token}` | Get poll details | Low |
-| POST | `/spreed/api/v4/poll/{token}/vote` | Cast vote on poll option | Medium |
-| DELETE | `/spreed/api/v4/poll/{token}/vote` | Remove vote from poll | Medium |
-| POST | `/spreed/api/v4/poll/{token}/delete` | Delete poll | Low |
+| POST | `/spreed/api/v4/poll/{pollId}/vote` | Cast vote on poll option | Medium |
+| DELETE | `/spreed/api/v4/poll/{pollId}/vote` | Remove vote from poll | Medium |
 
-**Complexity Estimate:** **Medium**  
-**Estimate Reasoning:**
-- Poll creation requires structured JSON body (title, options)
-- Vote management requires tracking user votes
-- Poll status (open/closed) state management
-- No complex parsing but business logic complexity
+**Complexity Estimate (remaining):** **Low-Medium**  
+- Votes are simple JSON payloads; poll state is tracked server-side
 
 ---
 
@@ -376,20 +390,22 @@ The current implementation covers **6 major service areas** with varying levels 
 ---
 
 ### 2.10 Talk API v4 - Settings Management
-**Status:** ⚠️ Not Implemented  
-**Available Endpoints (Not Implemented):**
-| Method | Endpoint | Description | Complexity |
-|--------|----------|-------------|------------|
-| GET | `/spreed/api/v4/settings/{token}` | Get conversation settings | Low |
-| PUT | `/spreed/api/v4/settings/{token}` | Update conversation settings | Medium |
-| GET | `/spreed/api/v4/settings/{token}/default-password` | Get default password policy | Low |
-| PUT | `/spreed/api/v4/settings/{token}/default-password` | Update default password policy | Medium |
+**Status:** ✅ Implemented (added 2026-06 in `509dc31` → `009af5e`)  
+> **Correction:** the `/spreed/api/v4/settings/{token}` endpoints listed in the original audit **do not exist** (they return 404 — verified in `0253286`/`4f33642`). Settings are read from the room resource and written through dedicated room subresources.
 
-**Complexity Estimate:** **Low-Medium**  
-**Estimate Reasoning:**
-- Settings are JSON key-value pairs
-- Password policy involves validation rules
-- Straightforward data structures
+**Implemented:**
+| Method | Endpoint | Setting |
+|--------|----------|---------|
+| GET | `/spreed/api/v4/room/{token}` | `Talk.getSettings()` / `Talk.getGuestSettings()` (room JSON carries settings) |
+| POST/DELETE | `/spreed/api/v4/room/{token}/favorite` | Favorite toggle |
+| POST | `/spreed/api/v4/room/{token}/notify` | Notification level |
+| PUT | `/spreed/api/v4/room/{token}/read-only` | Read-only state |
+| PUT | `/spreed/api/v4/room/{token}/password` | Room password |
+| POST/DELETE | `/spreed/api/v4/room/{token}/public` | Public/private |
+| PUT | `/spreed/api/v4/room/{token}/listable` | Listable scope |
+| PUT | `/spreed/api/v4/room/{token}/permissions/default` | Default permissions |
+
+**Remaining:** per-user `muted` cannot be changed via the user app-password API (documented limitation in `Talk.updateSettings()`).
 
 ---
 
@@ -441,7 +457,7 @@ The current implementation covers **6 major service areas** with varying levels 
 ---
 
 ### 3.3 CalDAV - Additional Features
-**Status:** ❌ Not Implemented  
+**Status:** ❌ Not Implemented (calendar color ✅ implemented 2026-06 — see 1.6/1.7)  
 **Missing Features:**
 
 | Feature | Description | Complexity | Priority |
@@ -451,7 +467,6 @@ The current implementation covers **6 major service areas** with varying levels 
 | Calendar free/busy queries | `/freebusy/{user}.ics` endpoint | Medium | Low |
 | Calendar delegation | Delegate calendar management to another user | High | Low |
 | Recurrence rule parsing | RRULE, RDATE, EXDATE handling | High | Medium |
-| Calendar color settings | Calendar display color via `cal:calendar-color` | Low | Low |
 | Calendar description via DAV props | Store calendar description in properties | Low | Low |
 | Calendar timezone support | Calendar-specific timezone configuration | Medium | Medium |
 
@@ -464,19 +479,12 @@ The current implementation covers **6 major service areas** with varying levels 
 ---
 
 ### 3.4 CardDAV - Additional Features
-**Status:** ❌ Not Implemented  
+**Status:** ❌ Mostly Not Implemented (BDAY, ANNIVERSARY, URL, ADR, ROLE, typed TEL/EMAIL ✅ implemented 2026-06 — see 1.8)  
 **Missing Features:**
 
 | Feature | Description | Complexity | Priority |
 |---------|-------------|------------|----------|
 | vCard PHOTO field | Contact photo upload/download | Medium | Medium |
-| vCard BDAY field | Birthday handling | Low | Low |
-| vCard ANNIVERSARY field | Anniversary handling | Low | Low |
-| vCard URL field | Homepage/URL handling | Low | Low |
-| vCard ADR field | Address handling (multi-line) | Medium | Medium |
-| vCard ROLE field | Role/job title in organizations | Low | Low |
-| vCard TEL (type-specific) | Phone types (home, work, mobile, etc.) | Medium | Medium |
-| vCard EMAIL (type-specific) | Email types (home, work) | Medium | Medium |
 | CardDAV sync collections | Sync-token based incremental sync | High | Medium |
 | vCard photo thumbnails | Generate contact photo thumbnails | Medium | Low |
 | vCard vCard4 support | Newer vCard format support | Medium | Low |
@@ -490,15 +498,14 @@ The current implementation covers **6 major service areas** with varying levels 
 ---
 
 ### 3.5 Notes API - Advanced Features
-**Status:** ❌ Not Implemented  
+**Status:** ⚠️ Mostly Implemented (categories API, history viewing, export backup ✅ 2026-06 — see 1.1)  
 **Missing Features:**
 
 | Feature | Description | Complexity | Priority |
 |---------|-------------|------------|----------|
-| Note categories API | List/create/delete categories | Medium | Medium |
-| Note history/versioning | View note history | High | Low |
-| Note backup/restore | Export/import notes | Medium | Low |
-| Note tagging | Custom tag system | Medium | Low |
+| Note history restore | Restore a note from a history version | High | Low |
+| Backup import/restore | Import notes from a backup export | Medium | Low |
+| Note tagging | Custom tag system (beyond the built-in categories) | Medium | Low |
 | Note attachments | Attach files to notes | High | Low |
 
 **Complexity Estimate:** **Medium**  
@@ -516,14 +523,14 @@ The current implementation covers **6 major service areas** with varying levels 
 | Category | Endpoints | Complexity | Priority |
 |----------|-----------|------------|----------|
 | **Avatar Management** | PUT/DELETE `/spreed/api/v4/room/{token}/avatar` | Low | Medium |
-| **Reaction Management** | POST/DELETE `/spreed/api/v1/chat/{token}/message/{id}/reaction/{emoji}` | Low | Medium |
-| **Poll Management** | 5 endpoints for poll lifecycle | Medium | Medium |
+| **Reaction Management** | ✅ Implemented 2026-06 (only "did I react" check remaining) | — | Done |
+| **Poll Management** | ⚠️ Lifecycle implemented 2026-06; `vote`/`unvote` endpoints remaining | Low | Medium |
 | **Breakout Rooms** | 7+ endpoints for room configuration | High | High |
 | **Call Management** | 8+ endpoints for call control | High | High |
 | **Call Recording** | 4 endpoints for recording lifecycle | Low | Low |
 | **Bot Management** | 5 endpoints for bot registration | Medium | Medium |
 | **Webinar** | 6+ endpoints for webinar control | High | Medium |
-| **Settings** | 4 endpoints for conversation settings | Low | Low |
+| **Settings** | ✅ Implemented 2026-06 via room subresource endpoints | — | Done |
 
 **Complexity Estimate:** **High**  
 **Estimate Reasoning:**
@@ -543,7 +550,8 @@ The current implementation covers **6 major service areas** with varying levels 
 | Breakout Rooms | 🔴 High | 2-3 days | High |
 | Call Management | 🔴 High | 3-4 days | High |
 | File Trash | 🟡 Medium | 1-2 days | Medium |
-| Talk Reactions | 🟢 Low | 0.5 day | Low |
+| ~~Talk Reactions~~ ✅ Done (2026-06) | — | — | — |
+| Poll Voting (`vote`/`unvote`) | 🟡 Medium | 0.5 day | Low |
 | **Medium Priority** | | | |
 | Participant Management | 🟡 Medium | 1-2 days | Medium |
 | Bot Management | 🟡 Medium | 1-2 days | Medium |
@@ -570,32 +578,35 @@ The current implementation covers **6 major service areas** with varying levels 
 
 ## 5. Recommendations
 
-### 5.1 Immediate Actions (Q2 2026)
-1. **Add Breakout Rooms** - High user value, moderate complexity
-2. **Implement Call Management** - Core feature for Talk CLI
+> **2026-10-14:** Talk Reactions and conversation settings (original Q2/Q3 items) are complete and removed below. Breakout rooms and call management were re-prioritized down — complex state machines with limited CLI value without real-time transport.
+
+### 5.1 Immediate Actions (Q4 2026)
+1. **Participant Management** (list/remove/promote/demote) - Essential for admin workflows
+2. **Poll Voting** (`vote`/`unvote`) - Completes the poll lifecycle
 3. **File Trash Operations** - Basic file management gap
 
-### 5.2 Short-Term Enhancements (Q3 2026)
-1. **Participant Management** - Essential for admin workflows
-2. **Talk Reactions** - Small feature with big UX impact
-3. **Contact Photos** - Common contact management need
-4. **File Versions** - Basic file version history
+### 5.2 Short-Term Enhancements (2027 H1)
+1. **Contact Photos** - Common contact management need
+2. **File Versions** - Basic file version history
+3. **Conversation Avatars** - Low complexity, completes room management
+4. **Note History Restore** - Completes the Notes history/backup feature
 
-### 5.3 Long-Term Roadmap (Q4 2026+)
-1. **Calendar Recurrence Parsing** - Advanced scheduling needs
-2. **Remote Shares** - Federated cloud support
-3. **Notes Attachments** - Enhanced note functionality
+### 5.3 Long-Term Roadmap (2027+)
+1. **Breakout Rooms / Call Management** - Complex state machines, likely low CLI value without real-time transport
+2. **Calendar Recurrence Parsing** - Advanced scheduling needs (would replace regex iCalendar handling)
+3. **Remote Shares** - Federated cloud support
+4. **Notes Attachments** - Enhanced note functionality
 
 ---
 
 ## 6. Conclusion
 
-The current implementation provides **solid foundational coverage** of Nextcloud's core APIs. The CLI skill excels at basic CRUD operations for Notes, Files, CalDAV, CardDAV, and has partial Talk/Shares coverage.
+The current implementation provides **solid foundational coverage** of Nextcloud's core APIs. The CLI skill excels at basic CRUD operations for Notes, Files, CalDAV, CardDAV, and now covers most of the practical Talk API surface (chat, reactions, poll lifecycle, room settings, bots) alongside core Shares functionality.
 
 **Key Gaps:**
-- **Talk API:** Missing advanced features (breakout rooms, call management, reactions, polls)
-- **Files API:** Missing trash, versions, and advanced sharing options
-- **CalDAV/CardDAV:** Missing advanced iCalendar/vCard features
+- **Talk API:** Participant listing/removal, avatars, breakout rooms, call control, recording, webinar, poll voting
+- **Files API:** Missing trash, versions, favorites, and advanced sharing options
+- **CalDAV/CardDAV:** Missing recurrence parsing, free/busy, alarms, contact photos, and sync-token support
 
 **Strengths:**
 - Well-structured module design with consistent error handling
@@ -603,4 +614,13 @@ The current implementation provides **solid foundational coverage** of Nextcloud
 - Proper ETag handling for optimistic concurrency
 - Clean JSON output format suitable for automation
 
-**Overall Assessment:** The implementation is production-ready for basic workflows but would benefit from advanced feature additions to compete with full-featured Nextcloud clients.
+**Overall Assessment:** The implementation is production-ready for everyday workflows (notes, files, calendar, contacts, sharing, and Talk chat with reactions/polls); real-time and admin-oriented Talk features remain the main gap to full-featured Nextcloud clients.
+
+---
+
+## 7. Revision History
+
+| Date | Notes |
+|------|-------|
+| 2026-05-31 | Original audit against monolithic `index.js` |
+| 2026-10-14 | Re-audit against `src/` modules after the `feature/nextcloud-talk-integration` sprint: Notes categories/history/backup (`37d0e9b`), CardDAV extended vCard fields (`ad321eb`), CalDAV calendar colors (`11161b7`), Talk reactions (`92ac079`) and poll lifecycle (`bd1e52d`), conversation/guest settings via room subresource endpoints (`509dc31`, `009af5e`). Corrected the non-existent `/spreed/api/v4/settings/{token}` endpoint claims and bot API version (`v1`, not `v4`); re-prioritized the recommendations matrix |

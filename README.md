@@ -4,16 +4,28 @@
 
 # OpenClaw Nextcloud Skill
 
-A Node.js CLI tool for interacting with Nextcloud services including notes, files, calendars, tasks, and contacts.
+> **Fork notice:** This repository is a maintained fork of [keithvassallomt/openclaw-nextcloud](https://github.com/keithvassallomt/openclaw-nextcloud), extended with substantially broader API coverage. Additions over upstream include:
+>
+> - **Talk** — reactions (add/remove/list), polls (create/get/close/publish/results), conversation & guest settings (public, listable, default-permissions, favorite, notification level, read-only, password), `talk get`, file upload-to-chat
+> - **Shares** — user and group shares (`create-user`, `create-group`) in addition to public links
+> - **Notes** — category management, per-note history, export backup
+> - **Calendar/Tasks** — calendar color get/set
+> - **Contacts** — extended vCard fields (BDAY, ANNIVERSARY, URL, ROLE, ADR, typed TEL/EMAIL)
+> - **Engineering** — modular `src/` architecture (same esbuild bundle output), `.env` support, unit + integration tests
+>
+> See `API_AUDIT.md` for per-endpoint coverage details.
+
+A Node.js CLI tool for interacting with Nextcloud services including notes, files, calendars, tasks, contacts, shares, and Talk conversations.
 
 ## Features
 
-- **Notes** - Create, read, update, and delete notes
+- **Notes** - Create, read, update, and delete notes; manage categories; view note history; export a backup
 - **Files** - Upload, download, list, search, and delete files via WebDAV
-- **Calendar** - Manage calendar events via CalDAV
-- **Tasks** - Create and manage tasks/todos
-- **Contacts** - Full contact management via CardDAV
-- **Chat/Conversations** - Manage Talk conversations, send messages, and integrate with Nextcloud bots
+- **Calendar** - Manage calendar events via CalDAV, including calendar display color
+- **Tasks** - Create, manage, and complete tasks/todos, including calendar display color
+- **Contacts** - Contact management via CardDAV with extended vCard fields (birthday, anniversary, URL, role, address, typed phone/email)
+- **Shares** - Public link, user, and group shares
+- **Chat/Conversations** - Manage Talk conversations, messages, reactions, polls, conversation settings, participants, bots, and file sharing into chats
 
 **Note on Call Permissions:** The `--call-permissions` setting was removed as the underlying Nextcloud Talk API endpoint (`/permissions/call`) is no-op since Nextcloud Talk 20. Call permissions must be configured manually in the Nextcloud UI.
 
@@ -21,14 +33,14 @@ A Node.js CLI tool for interacting with Nextcloud services including notes, file
 
 ## Prerequisites
 
-- Node.js 20 or higher
+- Node.js 22 or higher (uses the native `fetch` API)
 - A Nextcloud instance with API access
 - An app password for your Nextcloud account
 
 ## Installation
 
 ```bash
-git clone https://github.com/keithvassallomt/openclaw-nextcloud.git
+git clone https://github.com/I-k-a-r-u-s/openclaw-nextcloud.git
 cd openclaw-nextcloud
 ```
 
@@ -38,21 +50,22 @@ The skill is pre-bundled with all dependencies in `scripts/nextcloud.js` - no np
 
 The project uses a bundled architecture:
 
-- **`index.js`** - Source code (edit this)
+- **`src/`** - Source code, split into modules (`src/index.js` is the CLI entry; per-service modules like `src/talk.js`, `src/caldav.js`) — edit these
 - **`scripts/nextcloud.js`** - Bundled output with all dependencies (run this)
 
 To make changes:
 
 ```bash
 npm install              # Install dev dependencies (first time only)
-# Edit index.js
-npm run build            # Bundle into scripts/nextcloud.js
+# Edit files in src/
+npm run build            # Bundle src/index.js into scripts/nextcloud.js
+npm test                 # Unit tests run offline; integration tests need a live Nextcloud instance (see TESTING.md)
 ```
 
-Both files should be committed - the bundle allows users/agents to run the skill without npm install.
+Source and bundle should always be committed together - the bundle allows users/agents to run the skill without npm install.
 
 ## Configuration
-Store these values in environment variables, or openclawd.json, or use a .env file.
+Store these values in environment variables, or in a `.env` file in the working directory (loaded automatically at startup).
 
 ```env
 NEXTCLOUD_URL=https://your-nextcloud-instance.com
@@ -89,6 +102,18 @@ node scripts/nextcloud.js notes edit --id 123 --title "Updated Title" --content 
 
 # Delete a note
 node scripts/nextcloud.js notes delete --id 123
+
+# List / create / delete categories
+node scripts/nextcloud.js notes list-categories
+node scripts/nextcloud.js notes create-category --name "Work"
+node scripts/nextcloud.js notes delete-category --name "Work"
+
+# View a note's version history
+node scripts/nextcloud.js notes history --id 123
+
+# Export a backup of all notes (optionally write to a file)
+node scripts/nextcloud.js notes backup
+node scripts/nextcloud.js notes backup --output notes-backup.json
 ```
 
 ### Files
@@ -112,7 +137,7 @@ node scripts/nextcloud.js files delete --path "Documents/test.txt"
 
 `files list` and `files search` results include a `fileId` (when the server returns one) and a synthesized `internalLink` like `<NEXTCLOUD_URL>/index.php/f/<fileId>` that opens the file directly in the Nextcloud web UI.
 
-### Shares (public links)
+### Shares (links, users, groups)
 
 ```bash
 # Create a public link share for a file or folder
@@ -127,11 +152,17 @@ node scripts/nextcloud.js shares list
 # List shares for a specific path
 node scripts/nextcloud.js shares list --path "/Documents/Reports"
 
+# Share with a user
+node scripts/nextcloud.js shares create-user --path "/Documents/Reports" --user alice --permissions edit
+
+# Share with a group
+node scripts/nextcloud.js shares create-group --path "/Documents/Reports" --group staff
+
 # Delete a share by ID
 node scripts/nextcloud.js shares delete --id 29
 ```
 
-`--permissions read` (default) is read-only; `--permissions edit` grants create/read/update/delete on the shared resource. `--password` and `--expire` are optional.
+`--permissions read` (default) is read-only; `--permissions edit` grants create/read/update/delete on the shared resource. `--password` and `--expire` are optional (link shares).
 
 ### Calendar
 
@@ -150,6 +181,10 @@ node scripts/nextcloud.js calendar edit --uid event-uid --summary "Updated Meeti
 
 # Delete an event
 node scripts/nextcloud.js calendar delete --uid event-uid
+
+# Get / set the calendar's display color
+node scripts/nextcloud.js calendar get-color
+node scripts/nextcloud.js calendar set-color --color "#FF5500"
 ```
 
 `--calendar` and `--addressbook` accept the display name (case-insensitive),
@@ -172,6 +207,10 @@ node scripts/nextcloud.js tasks complete --uid task-uid
 
 # Delete a task
 node scripts/nextcloud.js tasks delete --uid task-uid
+
+# Get / set the task calendar's display color
+node scripts/nextcloud.js tasks get-color
+node scripts/nextcloud.js tasks set-color --color "#00AA44"
 ```
 
 ### Contacts
@@ -189,6 +228,13 @@ node scripts/nextcloud.js contacts search --query "john"
 # Create a contact
 node scripts/nextcloud.js contacts create --name "John Doe" --email "john@example.com" --phone "+1234567890"
 
+# Extended vCard fields: birthday, anniversary, URL, role, address, typed phone/email
+node scripts/nextcloud.js contacts create --name "Jane Doe" \
+  --bday "1990-01-01" --anniversary "2015-06-20" \
+  --url "https://example.com" --role "CTO" \
+  --address "Main Street|Springfield|CA|90210" \
+  --phone "+1234567890" --phone-type work
+
 # Get a specific contact
 node scripts/nextcloud.js contacts get --uid contact-uid
 
@@ -202,8 +248,9 @@ node scripts/nextcloud.js contacts delete --uid contact-uid
 ### Chat/Conversations (Talk API)
 
 ```bash
-# List all conversations
+# List all conversations / get a single conversation
 node scripts/nextcloud.js talk list
+node scripts/nextcloud.js talk get --token ABC123
 
 # Create a new conversation
 node scripts/nextcloud.js talk create --name "Project Team" --type group
@@ -211,21 +258,58 @@ node scripts/nextcloud.js talk create --name "Project Team" --type group
 # List messages in a conversation
 node scripts/nextcloud.js talk messages --token ABC123 --limit 50
 
-# Send a message
+# Send a message (optionally as a reply)
 node scripts/nextcloud.js talk send --token ABC123 --message "Hello team!"
+node scripts/nextcloud.js talk send --token ABC123 --message "Replying" --reply-to 1567
 
-# Delete a message
+# Edit or delete a message
+node scripts/nextcloud.js talk edit-message --token ABC123 --message-id 1567 --message "Fixed typo"
 node scripts/nextcloud.js talk delete-message --token ABC123 --message-id 1567
 
-# List bots (all on server)
+# Add a participant to a conversation
+node scripts/nextcloud.js talk add-participant --token ABC123 --user alice
+
+# Share content into a conversation as a file
+# (uploads to the conversation's Talk/ folder, then posts the share)
+node scripts/nextcloud.js talk upload-file --token ABC123 --file "reports/digest.txt" --content "Weekly digest..."
+
+# List bots (add --token to list bots in one conversation)
 node scripts/nextcloud.js talk list-bots
 
-# Enable a bot in a conversation
+# Enable / disable a bot in a conversation
 node scripts/nextcloud.js talk enable-bot --token ABC123 --bot-id 5
+node scripts/nextcloud.js talk disable-bot --token ABC123 --bot-id 5
+```
+
+### Reactions
+
+```bash
+# Add / remove a reaction on a message
+node scripts/nextcloud.js talk add-reaction --token ABC123 --message-id 1567 --emoji "🎉"
+node scripts/nextcloud.js talk delete-reaction --token ABC123 --message-id 1567 --emoji "🎉"
+
+# List reactions on a message
+node scripts/nextcloud.js talk list-reactions --token ABC123 --message-id 1567
+```
+
+### Polls
+
+```bash
+# Create a poll (comma-separated options)
+node scripts/nextcloud.js talk create-poll --token ABC123 --question "Lunch?" --options "Pizza,Sushi,Salad"
+
+# Get a poll / view results / close / publish
+node scripts/nextcloud.js talk get-poll --token ABC123 --poll-id 42
+node scripts/nextcloud.js talk get-poll-results --token ABC123 --poll-id 42
+node scripts/nextcloud.js talk close-poll --token ABC123 --poll-id 42
+node scripts/nextcloud.js talk publish-poll --token ABC123 --poll-id 42
+```
+
+**Note:** voting on polls is not exposed via the CLI — use the Nextcloud UI for that.
 
 ### Conversation Settings
 
-Update conversation settings using `talk update-settings`:
+Read settings with `talk get-settings` / `talk get-guest-settings`, and update them with `talk update-settings` / `talk update-guest-settings`:
 
 ```bash
 # Update notification level
@@ -248,6 +332,7 @@ node scripts/nextcloud.js talk update-settings --token ABC123 --default-permissi
 ```
 
 **Available Settings:**
+
 | Setting | Values | Description |
 |---------|--------|-------------|
 | `notification-level` | `0`, `1`, `2`, `3` | Default, Always notify, Notify on mention, Never notify |
@@ -255,8 +340,7 @@ node scripts/nextcloud.js talk update-settings --token ABC123 --default-permissi
 | `favorite` | `0`, `1` | Remove from or add to favorites |
 | `public` | `0`, `1` | Disable or enable guest join via link |
 | `listable` | `0`, `1`, `2` | Participants only, Regular users only, Everyone |
-| `default-permissions` | Integer | Combined permission flags (e.g., `128` for chat messages)
-```
+| `default-permissions` | Integer | Combined permission flags (e.g., `128` for chat messages) |
 
 **Bot Setup Required:** For bot features, install a bot on your Nextcloud server first (requires admin SSH access):
 
@@ -312,7 +396,7 @@ This tool uses the following Nextcloud APIs:
 
 ## Dependencies
 
-- [node-fetch](https://www.npmjs.com/package/node-fetch) - HTTP client
+- Native `fetch` (Node.js 22+) - HTTP client
 - [fast-xml-parser](https://www.npmjs.com/package/fast-xml-parser) - XML parsing
 - [date-fns](https://www.npmjs.com/package/date-fns) - Date formatting
 
@@ -336,13 +420,13 @@ This skill executes a bundled JavaScript file (`scripts/nextcloud.js`) on your m
 A static analyser scanning this skill will likely flag rules in the family of `suspicious.env_credential_access` — code that reads an environment variable and then makes a network call. That signal is **expected**: every authenticated API client matches it, including this one. The pattern is constrained as follows, and these constraints are what to audit:
 
 - The credential is read from `NEXTCLOUD_TOKEN` only. No other env var is consulted for credential material.
-- The credential is sent only to URLs derived from `NEXTCLOUD_URL`. There are no hard-coded hosts in the source (`grep -E 'http[s]?://' index.js` returns nothing).
+- The credential is sent only to URLs derived from `NEXTCLOUD_URL`. There are no hard-coded hosts in the source (`grep -rE 'http[s]?://' src/` returns nothing).
 - HTTPS is enforced at startup (see above), so the credential cannot be sent in cleartext without an explicit opt-in.
 - There is no telemetry, analytics, auto-update, or third-party callback. The script makes one outbound destination — your Nextcloud — and exits.
 
 **Auditing the bundle**
 
-`scripts/nextcloud.js` is the output of running `esbuild` over `index.js` plus the three declared dependencies. To verify the bundle matches the source:
+`scripts/nextcloud.js` is the output of running `esbuild` over `src/` plus the two declared dependencies. To verify the bundle matches the source:
 
 ```bash
 npm install
