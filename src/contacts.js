@@ -1,7 +1,15 @@
 import { CONFIG } from "./config.js";
 import { request } from "./request.js";
-import { ensureArray, matchByName, xmlEscape, vcardEscape } from "./utils.js";
+import {
+  ensureArray,
+  matchByName,
+  xmlEscape,
+  vcardEscape,
+  guessImageMime,
+  decodeNumericEntities,
+} from "./utils.js";
 import crypto from "node:crypto";
+import fs from "node:fs";
 
 export const Contacts = {
   async findAddressBooks() {
@@ -167,6 +175,21 @@ export const Contacts = {
     const title = getField("TITLE");
     const note = getField("NOTE");
 
+    // Detect photo presence + mime without dumping the (possibly huge) base64
+    // payload into list output; getPhoto() downloads it.
+    const photoMatch = vcard.match(/^PHOTO([^:\n]*):/mi);
+    let photoMime = null;
+    if (photoMatch) {
+      const firstValue = vcard.match(/^PHOTO[^:\n]*:([^\n]*)/mi)?.[1] || "";
+      const dataUri = firstValue.match(/^data:image\/([a-z0-9.+-]+)/i);
+      const typeParam = photoMatch[1].match(/TYPE=([A-Za-z0-9.+-]+)/i);
+      photoMime = dataUri
+        ? `image/${dataUri[1].toLowerCase()}`
+        : typeParam
+          ? `image/${typeParam[1].toLowerCase()}`
+          : null;
+    }
+
     return {
       uid: uid,
       fullName: fn,
@@ -181,6 +204,8 @@ export const Contacts = {
       organization: org,
       title: title,
       note: note,
+      hasPhoto: !!photoMatch,
+      photoMime: photoMime,
     };
   },
 
@@ -240,7 +265,9 @@ export const Contacts = {
           return {
             href: responses[0]["d:href"],
             etag: propstats[0]["d:prop"]["d:getetag"],
-            data: propstats[0]["d:prop"]["card:address-data"],
+            data: decodeNumericEntities(
+              propstats[0]["d:prop"]["card:address-data"],
+            ),
             addressBookUrl: ab.url,
           };
         }
@@ -289,6 +316,8 @@ export const Contacts = {
       vcard += `ADR:;;${addrParts.map(vcardEscape).join(";")}\n`;
     }
 
+    if (options.photo) vcard += this._photoVCardLine(options.photo);
+
     vcard += `END:VCARD`;
 
     const filename = `${uid}.vcf`;
@@ -317,6 +346,71 @@ export const Contacts = {
       "END:VCARD",
       `${field}:${vcardEscape(value)}\nEND:VCARD`,
     );
+  },
+
+  // RFC 6350 line folding (>75 octets split with leading-space continuations;
+  // base64 payloads are ASCII so char count == octet count).
+  _foldVCardLine(line) {
+    const MAX = 74;
+    if (line.length <= MAX) return line;
+    let out = line.slice(0, MAX);
+    let rest = line.slice(MAX);
+    while (rest.length > MAX - 1) {
+      out += "\n " + rest.slice(0, MAX - 1);
+      rest = rest.slice(MAX - 1);
+    }
+    if (rest) out += "\n " + rest;
+    return out;
+  },
+
+  _photoVCardLine(filePath) {
+    if (!fs.existsSync(filePath))
+      throw new Error(`Photo file not found: ${filePath}`);
+    const mime = guessImageMime(filePath);
+    if (!mime)
+      throw new Error("Photo must be one of: png, jpg, jpeg, gif, webp, bmp.");
+    const b64 = fs.readFileSync(filePath).toString("base64");
+    const type = mime.split("/")[1].toUpperCase();
+    return this._foldVCardLine(`PHOTO;ENCODING=BASE64;TYPE=${type}:${b64}`) + "\n";
+  },
+
+  // Removes a (possibly folded) vCard entry entirely.
+  _removeVCardField(vcard, field) {
+    const re = new RegExp(
+      `^${field}(?:;[^\\n]*)?:[^\\n]*(?:\\r?\\n[ \\t][^\\r\\n]*)*\\r?\\n?`,
+      "gmi",
+    );
+    return vcard.replace(re, "");
+  },
+
+  async getPhoto(uid, addressBookName = null, outputPath = null) {
+    const contact = await this.findContactPath(uid, addressBookName);
+    if (!contact) throw new Error(`Contact ${uid} not found.`);
+
+    const m = contact.data.match(
+      /^PHOTO([^:\n]*):([^\r\n]*(?:\r?\n[ \t][^\r\n]*)*)/mi,
+    );
+    if (!m) throw new Error("Contact has no PHOTO field.");
+
+    // Unfold, then accept both vCard 3 (base64 value + TYPE param) and
+    // vCard 4 (data URI) encodings.
+    const value = m[2].replace(/\r?\n[ \t]/g, "").replace(/\s+/g, "");
+    let b64 = value;
+    let mime = null;
+    const dataUri = value.match(/^data:image\/([a-z0-9.+-]+);base64,(.*)$/i);
+    if (dataUri) {
+      mime = `image/${dataUri[1].toLowerCase()}`;
+      b64 = dataUri[2];
+    } else {
+      const tp = m[1].match(/TYPE=([A-Za-z0-9.+-]+)/i);
+      mime = tp ? `image/${tp[1].toLowerCase()}` : "image/jpeg";
+    }
+
+    const ext = (mime.split("/")[1] || "jpg").replace(/[^a-z0-9]/g, "") || "jpg";
+    const file = outputPath || `${uid}.${ext}`;
+    const buffer = Buffer.from(b64, "base64");
+    fs.writeFileSync(file, buffer);
+    return { uid, path: file, mime, bytes: buffer.length };
   },
 
   async update(uid, addressBookName, updates) {
@@ -358,6 +452,13 @@ export const Contacts = {
     if (updates.address) {
       const addrParts = updates.address.split("|");
       vcard = this._updateVCardField(vcard, "ADR", `;;${addrParts.join(";")}`);
+    }
+    if (updates.photo) {
+      vcard = this._removeVCardField(vcard, "PHOTO");
+      vcard = vcard.replace(
+        "END:VCARD",
+        this._photoVCardLine(updates.photo) + "END:VCARD",
+      );
     }
 
     await request(contact.href, {

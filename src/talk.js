@@ -1,6 +1,7 @@
 import { CONFIG } from "./config.js";
-import { request } from "./request.js";
-import { ensureArray } from "./utils.js";
+import { request, fetchRaw } from "./request.js";
+import { ensureArray, guessImageMime } from "./utils.js";
+import fs from "node:fs";
 
 export const Talk = {
   async listConversations() {
@@ -314,22 +315,32 @@ export const Talk = {
     return data.ocs?.data || [];
   },
 
+  // Talk's poll API lives under v1 (see spreed routesPollController.php).
   async createPoll(token, question, options) {
     if (!token) throw new Error("Conversation token is required.");
     if (!question) throw new Error("Poll question is required.");
-    if (!options || !Array.isArray(options) || options.length === 0) {
-      throw new Error("Poll options are required (at least one option).");
+    if (!options || !Array.isArray(options) || options.length < 2) {
+      throw new Error("Poll requires at least two options.");
     }
 
-    const data = await request("/ocs/v2.php/apps/spreed/api/v4/poll", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        conversationId: token,
-        question: question,
-        options: options,
-      }),
-    });
+    const data = await request(
+      `/ocs/v2.php/apps/spreed/api/v1/poll/${token}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          question: question,
+          options: options,
+          // current Talk requires resultMode/maxVotes (renamed from
+          // voteMode/voteMax); 0 = anonymous, maxVotes 1 = single choice
+          resultMode: 0,
+          maxVotes: 1,
+        }),
+      },
+    );
 
     return data.ocs?.data || {};
   },
@@ -339,7 +350,7 @@ export const Talk = {
     if (!pollId) throw new Error("Poll ID is required.");
 
     const data = await request(
-      `/ocs/v2.php/apps/spreed/api/v4/poll/${pollId}?conversationId=${token}`,
+      `/ocs/v2.php/apps/spreed/api/v1/poll/${token}/${pollId}`,
       { headers: { Accept: "application/json" } },
     );
 
@@ -350,32 +361,21 @@ export const Talk = {
     if (!token) throw new Error("Conversation token is required.");
     if (!pollId) throw new Error("Poll ID is required.");
 
-    await request(
-      `/ocs/v2.php/apps/spreed/api/v4/poll/${pollId}?conversationId=${token}`,
-      { method: "DELETE" },
-    );
+    await request(`/ocs/v2.php/apps/spreed/api/v1/poll/${token}/${pollId}`, {
+      method: "DELETE",
+    });
 
     return { token, pollId, status: "closed" };
   },
 
-  async publishPoll(token, pollId) {
-    if (!token) throw new Error("Conversation token is required.");
-    if (!pollId) throw new Error("Poll ID is required.");
-
-    const data = await request(
-      `/ocs/v2.php/apps/spreed/api/v4/poll/${pollId}/publish?conversationId=${token}`,
-      { method: "POST", headers: { "Content-Type": "application/json" } },
-    );
-
-    return data.ocs?.data || {};
-  },
-
+  // There is no separate "results" endpoint: showPoll returns vote counts
+  // plus per-voter details (when the vote mode allows it).
   async getPollResults(token, pollId) {
     if (!token) throw new Error("Conversation token is required.");
     if (!pollId) throw new Error("Poll ID is required.");
 
     const data = await request(
-      `/ocs/v2.php/apps/spreed/api/v4/poll/${pollId}/results?conversationId=${token}`,
+      `/ocs/v2.php/apps/spreed/api/v1/poll/${token}/${pollId}`,
       { headers: { Accept: "application/json" } },
     );
 
@@ -491,4 +491,223 @@ export const Talk = {
     // but with different semantics (applies to guests, not the user)
     return this.updateSettings(token, settings);
   },
+
+  // ---- Participant management ----
+
+  async listParticipants(token) {
+    if (!token) throw new Error("Conversation token is required.");
+    const data = await request(
+      `/ocs/v2.php/apps/spreed/api/v4/room/${token}/participants`,
+      { headers: { Accept: "application/json" } },
+    );
+    // v4 servers paginate as { items, pending }; older ones return a plain array.
+    const payload = data.ocs?.data;
+    if (Array.isArray(payload)) return payload;
+    return ensureArray(payload?.items ?? []);
+  },
+
+  async joinConversation(token) {
+    if (!token) throw new Error("Conversation token is required.");
+    const data = await request(
+      `/ocs/v2.php/apps/spreed/api/v4/room/${token}/participants/active`,
+      { method: "POST", headers: { Accept: "application/json" } },
+    );
+    return data.ocs?.data ?? { token, status: "joined" };
+  },
+
+  async leaveConversation(token) {
+    if (!token) throw new Error("Conversation token is required.");
+    await request(
+      `/ocs/v2.php/apps/spreed/api/v4/room/${token}/participants/active`,
+      { method: "DELETE", headers: { Accept: "application/json" } },
+    );
+    return { token, status: "left" };
+  },
+
+  async removeParticipant(token, participantAttendeeId) {
+    if (!token) throw new Error("Conversation token is required.");
+    if (!participantAttendeeId)
+      throw new Error("Participant attendee ID is required.");
+    await request(`/ocs/v2.php/apps/spreed/api/v4/room/${token}/attendees`, {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({ attendee: participantAttendeeId }),
+    });
+    return { token, participant: participantAttendeeId, status: "removed" };
+  },
+
+  async promoteParticipant(token, attendeeId) {
+    if (!token) throw new Error("Conversation token is required.");
+    if (!attendeeId) throw new Error("Attendee ID is required.");
+    await request(`/ocs/v2.php/apps/spreed/api/v4/room/${token}/moderators`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({ attendee: attendeeId }),
+    });
+    return { token, attendee: attendeeId, status: "promoted" };
+  },
+
+  async demoteParticipant(token, attendeeId) {
+    if (!token) throw new Error("Conversation token is required.");
+    if (!attendeeId) throw new Error("Attendee ID is required.");
+    await request(`/ocs/v2.php/apps/spreed/api/v4/room/${token}/moderators`, {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({ attendee: attendeeId }),
+    });
+    return { token, attendee: attendeeId, status: "demoted" };
+  },
+
+  async updateParticipantPermissions(
+    token,
+    attendeeId,
+    method = "set",
+    permissions,
+  ) {
+    if (!token) throw new Error("Conversation token is required.");
+    if (!attendeeId) throw new Error("Attendee ID is required.");
+    if (permissions === undefined || permissions === null)
+      throw new Error("Permissions bitmask is required.");
+    if (!["set", "add", "remove"].includes(method))
+      throw new Error("Method must be one of: set, add, remove.");
+    const data = await request(
+      `/ocs/v2.php/apps/spreed/api/v4/room/${token}/attendees/permissions`,
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({ attendee: attendeeId, method, permissions }),
+      },
+    );
+    return data.ocs?.data ?? {
+      token,
+      attendee: attendeeId,
+      method,
+      permissions,
+      status: "updated",
+    };
+  },
+
+  // ---- Poll voting ----
+  // Voting (and unvoting, via an empty option list) is a POST to the poll
+  // resource itself (spreed Poll#votePoll route).
+
+  async votePoll(token, pollId, optionIds) {
+    if (!token) throw new Error("Conversation token is required.");
+    if (!pollId) throw new Error("Poll ID is required.");
+    if (!Array.isArray(optionIds) || optionIds.length === 0)
+      throw new Error("At least one option ID is required (use unvote to clear).");
+    await request(
+      `/ocs/v2.php/apps/spreed/api/v1/poll/${token}/${pollId}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({ optionIds }),
+      },
+    );
+    return { token, pollId, voted: optionIds, status: "recorded" };
+  },
+
+  async unvotePoll(token, pollId) {
+    if (!token) throw new Error("Conversation token is required.");
+    if (!pollId) throw new Error("Poll ID is required.");
+    await request(
+      `/ocs/v2.php/apps/spreed/api/v1/poll/${token}/${pollId}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({ optionIds: [] }),
+      },
+    );
+    return { token, pollId, status: "vote-removed" };
+  },
+
+  // ---- Conversation avatars ----
+
+  async getAvatar(token, outputPath = null) {
+    if (!token) throw new Error("Conversation token is required.");
+    const response = await fetchRaw(
+      `/ocs/v2.php/apps/spreed/api/v1/room/${token}/avatar`,
+    );
+    if (response.status === 404) {
+      return { token, error: "No avatar set for this conversation." };
+    }
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+    const contentType = response.headers.get("content-type") || "image/jpeg";
+    const ext = contentType.includes("png")
+      ? "png"
+      : contentType.includes("svg")
+        ? "svg"
+        : "jpg";
+    const buffer = Buffer.from(await response.arrayBuffer());
+    const file = outputPath || `avatar-${token}.${ext}`;
+    fs.writeFileSync(file, buffer);
+    // Servers without a custom avatar answer 200 with a generated SVG
+    // placeholder instead of 404 (custom uploads are restricted to png/jpeg).
+    const fallback = contentType.includes("svg");
+    return {
+      token,
+      path: file,
+      contentType,
+      bytes: buffer.length,
+      ...(fallback
+        ? { fallback: true, note: "Generated placeholder; no custom avatar set." }
+        : {}),
+    };
+  },
+
+  async setAvatar(token, filePath) {
+    if (!token) throw new Error("Conversation token is required.");
+    if (!filePath) throw new Error("File path is required.");
+    if (!fs.existsSync(filePath))
+      throw new Error(`File not found: ${filePath}`);
+    const mime = guessImageMime(filePath);
+    if (!mime) throw new Error("Avatar must be a png/jpg/jpeg image.");
+    const buffer = fs.readFileSync(filePath);
+    const form = new FormData();
+    // AvatarController::uploadAvatar() reads getUploadedFile('file').
+    form.append(
+      "file",
+      new Blob([buffer], { type: mime }),
+      filePath.split("/").pop(),
+    );
+    // No explicit Content-Type: fetch sets the multipart boundary itself.
+    await request(`/ocs/v2.php/apps/spreed/api/v1/room/${token}/avatar`, {
+      method: "POST",
+      body: form,
+    });
+    return { token, file: filePath, status: "avatar-uploaded" };
+  },
+
+  async deleteAvatar(token) {
+    if (!token) throw new Error("Conversation token is required.");
+    await request(`/ocs/v2.php/apps/spreed/api/v1/room/${token}/avatar`, {
+      method: "DELETE",
+    });
+    return { token, status: "avatar-deleted" };
+  },
+
+  // NOTE: Bot registration/edit/removal has NO OCS API endpoints (verified
+  // against spreed routesBotController.php: only list/enable/disable/send/
+  // react exist). Bots must be installed via the admin terminal:
+  //   ./occ talk:bot:install ... / ./occ talk:bot:remove <name>
 };

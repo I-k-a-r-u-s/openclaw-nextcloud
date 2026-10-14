@@ -110,6 +110,22 @@ export function xmlEscape(str) {
   });
 }
 
+// fast-xml-parser decodes named entities but leaves numeric character
+// references as literal text; Sabre encodes the CR of CRLF endings as `&#13;`
+// inside DAV resource bodies (vCard/iCal), so decoded bodies must restore them
+// before the raw text is re-parsed or PUT back.
+export function decodeNumericEntities(str) {
+  if (typeof str !== "string") return str;
+  return str.replace(/&#(x?)([0-9a-f]+);/gi, (m, hex, digits) => {
+    const cp = parseInt(digits, hex ? 16 : 10);
+    try {
+      return String.fromCodePoint(cp);
+    } catch {
+      return m;
+    }
+  });
+}
+
 export function icalEscape(str) {
   if (str === null || str === undefined) return "";
   return String(str)
@@ -130,4 +146,17 @@ export function vcardEscape(str) {
 
 export function formatCalDavDate(date) {
   return date.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
+}
+
+export function guessImageMime(filePath) {
+  const ext = String(filePath).toLowerCase().split(".").pop() || "";
+  const map = {
+    png: "image/png",
+    jpg: "image/jpeg",
+    jpeg: "image/jpeg",
+    gif: "image/gif",
+    webp: "image/webp",
+    bmp: "image/bmp",
+  };
+  return map[ext] || null;
 }

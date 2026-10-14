@@ -8,6 +8,8 @@ import {
   ensureArray,
   matchByName,
   formatCalDavDate,
+  guessImageMime,
+  decodeNumericEntities,
 } from "../../src/utils.js";
 
 test("parseDateInput parses ISO 8601 dates", () => {
@@ -85,4 +87,31 @@ test("matchByName finds slug match", () => {
 test("formatCalDavDate produces compact UTC format", () => {
   const d = new Date("2026-04-15T17:00:00.000Z");
   assert.equal(formatCalDavDate(d), "20260415T170000Z");
+});
+
+test("guessImageMime maps extensions", () => {
+  assert.equal(guessImageMime("photo.png"), "image/png");
+  assert.equal(guessImageMime("/tmp/Photo.JPG"), "image/jpeg");
+  assert.equal(guessImageMime("a.b.jpeg"), "image/jpeg");
+  assert.equal(guessImageMime("anim.gif"), "image/gif");
+  assert.equal(guessImageMime("pic.webp"), "image/webp");
+  assert.equal(guessImageMime("pic.bmp"), "image/bmp");
+});
+
+test("guessImageMime returns null for unknown or missing extension", () => {
+  assert.equal(guessImageMime("file.txt"), null);
+  assert.equal(guessImageMime("noextension"), null);
+});
+
+test("decodeNumericEntities decodes decimal and hex refs", () => {
+  assert.equal(decodeNumericEntities("a&#13;\nb"), "a\r\nb");
+  assert.equal(decodeNumericEntities("&#x27;hi&#x27;"), "'hi'");
+  assert.equal(decodeNumericEntities("&#65;&#66;"), "AB");
+});
+
+test("decodeNumericEntities leaves invalid refs and non-strings alone", () => {
+  assert.equal(decodeNumericEntities("&#1114112;bad"), "&#1114112;bad");
+  assert.equal(decodeNumericEntities("plain"), "plain");
+  assert.equal(decodeNumericEntities(null), null);
+  assert.equal(decodeNumericEntities(undefined), undefined);
 });

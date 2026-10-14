@@ -9,15 +9,15 @@
 
 ## Executive Summary
 
-The current implementation covers **6 major service areas** with varying levels of API completeness. The codebase implements core CRUD operations for Notes, Files (WebDAV), CalDAV (events & tasks), CardDAV (contacts), and provides broad coverage of the Talk API v4 surface (chat, reactions, poll lifecycle, room settings, bots) alongside core Shares functionality.
+The current implementation covers **6 major service areas** with varying levels of API completeness. The codebase implements core CRUD operations for Notes, Files (WebDAV), CalDAV (events & tasks), CardDAV (contacts incl. photos), and provides broad coverage of the Talk API surface (chat, reactions, full poll lifecycle incl. voting, room settings, participant management, conversation avatars, bots) alongside Shares (link/user/group/remote/chat).
 
-**Overall Coverage Estimate (updated 2026-10-14):**
+**Overall Coverage Estimate (updated 2026-10-14, post implementation sprint):**
 - **Notes API:** ~95% complete (categories, history, and export backup implemented since the original audit)
 - **Files API:** ~60% complete (unchanged)
 - **CalDAV API:** ~80% complete (calendar color get/set added)
-- **CardDAV API:** ~85% complete (extended vCard fields added: BDAY, ANNIVERSARY, URL, ADR, ROLE, typed TEL/EMAIL)
-- **Talk API v4:** ~60% complete (reactions, poll lifecycle, room settings, and chat file sharing added)
-- **Shares API:** ~50% complete (unchanged)
+- **CardDAV API:** ~90% complete (extended vCard fields + PHOTO upload/download added 2026-10-14)
+- **Talk API v4:** ~75% complete (reactions, full poll lifecycle incl. voting, room settings, chat file sharing, participant management, and conversation avatars added; remaining = breakout rooms, calls, webinar — see 2.5/2.6/2.9)
+- **Shares API:** ~65% complete (remote/federated + chat shares added 2026-10-14; email shares remain)
 
 ---
 
@@ -54,13 +54,15 @@ The current implementation covers **6 major service areas** with varying levels 
 | Method | Endpoint | Function |
 |--------|----------|----------|
 | GET | `/shares` | `Shares.list({path})` |
-| POST | `/shares` | `Shares.createLink()`, `Shares.createUserShare()`, `Shares.createGroupShare()` |
+| POST | `/shares` | `Shares.createLink()`, `Shares.createUserShare()`, `Shares.createGroupShare()`, `Shares.createRemoteShare()` (shareType 6), `Shares.createChatShare()` (shareType 10) |
 | DELETE | `/shares/{id}` | `Shares.delete(id)` |
 
 **Features:**
 - Public link shares with optional password protection and expiration
 - User-to-user shares
 - Group-to-user shares
+- Remote (federated) shares — `user@server`, optional permissions/expiration (added 2026-10-14)
+- Chat shares into Talk conversations — server auto-posts the share message (added 2026-10-14)
 - Permission mapping (read: 1, edit: 15, delete: 31)
 - OCS envelope unwrapping with error handling
 
@@ -191,51 +193,42 @@ The current implementation covers **6 major service areas** with varying levels 
 
 ## 2. Partially Implemented Features
 
-> **2026-10-14 note:** Sections 2.3 (Reactions) and 2.10 (Settings) are now **fully implemented**; they are kept in place to preserve section numbering across audits.
+> **2026-10-14 note:** Sections 2.1 (Participants), 2.2 (Avatars), 2.3 (Reactions), 2.4 (Polls incl. voting) and 2.10 (Settings) are now **fully implemented**; they are kept in place to preserve section numbering across audits. 2.8 (Bots) is partial **by design** — the remaining endpoints do not exist in the API.
 
 ### 2.1 Talk API v4 - Participant Management
-**Status:** ⚠️ Partial (Only Bot Participation)  
+**Status:** ✅ Implemented (added 2026-10-14; live-verified against Nextcloud 34 / Talk). *List/join and route existence for remove/promote/demote/permissions were verified live; their happy paths (a second participant) only surfaced as logic-400s on self-targeting, since the test account is alone in the room.*  
+> **2026-10-14 correction:** most paths in the original table were invented. Authoritative routes (spreed stable31 `routesRoomController.php`): add is `POST /room/{token}/participants` (not `/participants/participant`), self join/leave is `/participants/active` (no `/self` or `/auto`), remove attendee is `DELETE /room/{token}/attendees` with `{attendee:<attendeeId>}` body, promote/demote is `POST|DELETE /room/{token}/moderators` with `{attendee}`, and per-attendee permissions is `PUT /room/{token}/attendees/permissions` with `{attendee, method: set|add|remove, permissions}`.
+
 **Implemented:**
 | Method | Endpoint | Function |
 |--------|----------|----------|
-| POST | `/spreed/api/v4/room/{token}/participants/participant` | `Talk.addParticipant()` |
+| POST | `/spreed/api/v4/room/{token}/participants` | `Talk.addParticipant()` (`talk add-participant`) |
+| GET | `/spreed/api/v4/room/{token}/participants` | `Talk.listParticipants()` (`talk participants`; handles both array and `{items,pending}` pagination shapes) |
+| POST | `/spreed/api/v4/room/{token}/participants/active` | `Talk.joinConversation()` (`talk join`) |
+| DELETE | `/spreed/api/v4/room/{token}/participants/active` | `Talk.leaveConversation()` (`talk leave`) |
+| DELETE | `/spreed/api/v4/room/{token}/attendees` | `Talk.removeParticipant()` (`talk remove-participant --participant <attendeeId>`) |
+| POST | `/spreed/api/v4/room/{token}/moderators` | `Talk.promoteParticipant()` (`talk promote --attendee`) |
+| DELETE | `/spreed/api/v4/room/{token}/moderators` | `Talk.demoteParticipant()` (`talk demote --attendee`) |
+| PUT | `/spreed/api/v4/room/{token}/attendees/permissions` | `Talk.updateParticipantPermissions()` (`talk set-participant-permissions --method set\|add\|remove --permissions <bitmask>`) |
 | PUT | `/spreed/api/v1/bot/{token}/{botId}` | `Talk.enableBotInConversation()` |
 | DELETE | `/spreed/api/v1/bot/{token}/{botId}` | `Talk.disableBotInConversation()` |
 
-**Missing Endpoints:**
-| Method | Endpoint | Description | Complexity |
-|--------|----------|-------------|------------|
-| GET | `/spreed/api/v4/room/{token}/participants` | List all participants | Low |
-| GET | `/spreed/api/v4/room/{token}/participants/self` | Get self participant info | Low |
-| POST | `/spreed/api/v4/room/{token}/participants/auto` | Add self to room | Low |
-| DELETE | `/spreed/api/v4/room/{token}/participants/participant/{participant}` | Remove participant | Medium |
-| PUT | `/spreed/api/v4/room/{token}/participants/permissions/{participant}` | Update participant permissions | Medium |
-| PUT | `/spreed/api/v4/room/{token}/participants/type/{participant}` | Change participant type (moderator/attendee) | Medium |
-| GET | `/spreed/api/v4/room/{token}/participants/inaccessible` | List inaccessible participants | Low |
-
-**Complexity Estimate:** **Medium**  
-**Estimate Reasoning:**
-- API endpoints are straightforward GET/POST/PUT/DELETE
-- Participant types (owner, moderator, attendee) require enum handling
-- Permission bit flags need mapping (see: `participantPermissions` constants)
-- No complex data parsing required
+**Remaining:** none of practical use — self-participant info is derivable from `participants` output (entries carry `attendeeId`/`actorId`), and `/participants/inaccessible` is an internal UI concern.
 
 ---
 
 ### 2.2 Talk API v4 - Conversation Avatar Management
-**Status:** ⚠️ Not Implemented  
-**Available Endpoints (Not Implemented):**
-| Method | Endpoint | Description | Complexity |
-|--------|----------|-------------|------------|
-| PUT | `/spreed/api/v4/room/{token}/avatar` | Upload conversation avatar | Medium |
-| DELETE | `/spreed/api/v4/room/{token}/avatar` | Delete conversation avatar | Low |
-| GET | `/spreed/api/v4/room/{token}/avatar` | Get conversation avatar | Low |
+**Status:** ✅ Implemented (added 2026-10-14, live-verified upload → download → delete roundtrip)  
+> **2026-10-14 correction:** the original audit's `v4` + `PUT` rows were wrong. Avatars live under **`/api/v1/room/{token}/avatar`** and upload is **POST** (not PUT); the multipart field name must be **`file`** (`AvatarController::uploadAvatar()` reads `getUploadedFile('file')` — using `avatar` yields HTTP 400 "No image file provided"). Only png/jpeg are accepted server-side.
 
-**Complexity Estimate:** **Low**  
-**Estimate Reasoning:**
-- Simple file upload/download via WebDAV-like interface
-- Avatar endpoint follows standard REST patterns
-- No complex data structures
+**Implemented:**
+| Method | Endpoint | Function |
+|--------|----------|----------|
+| GET | `/spreed/api/v1/room/{token}/avatar` | `Talk.getAvatar()` — writes image to disk; structured "no avatar" on 404, `fallback:true` flag when the server serves its generated SVG placeholder (200) for rooms without a custom avatar |
+| POST | `/spreed/api/v1/room/{token}/avatar` | `Talk.setAvatar()` — multipart upload, field `file` |
+| DELETE | `/spreed/api/v1/room/{token}/avatar` | `Talk.deleteAvatar()` |
+
+*Note:* the server re-encodes uploaded avatars, so a downloaded avatar is pixel-equivalent rather than byte-identical (verified on a 1×1 fixture).
 
 ---
 
@@ -256,24 +249,19 @@ The current implementation covers **6 major service areas** with varying levels 
 ---
 
 ### 2.4 Talk API v4 - Poll Management
-**Status:** ⚠️ Partially Implemented (added 2026-06 in `bd1e52d`; voting still missing)  
+**Status:** ✅ Fully Implemented (lifecycle added 2026-06 in `bd1e52d`; voting added 2026-10-14 with route correction — live-verified)  
+> **2026-10-14 correction:** the poll routes are under **`/api/v1/poll/…`, not v4**, and the v4-style paths with `?conversationId=` query params never existed (spreed stable31 `routesPollController.php`). Also, there was **never a `publish` or `results` endpoint**: `showPoll` returns the tally, so `publish-poll` (broken in the wild since it was added) has been **removed**, and `get-poll-results` remains as an alias of `get-poll`. Create body uses `resultMode`/`maxVotes` (the old `voteMode`/`voteMax` names are rejected by current servers).
+
 **Implemented:**
 | Method | Endpoint | Function |
 |--------|----------|----------|
-| POST | `/spreed/api/v4/poll` | `Talk.createPoll()` (`conversationId` in JSON body) |
-| GET | `/spreed/api/v4/poll/{pollId}?conversationId={token}` | `Talk.getPoll()` |
-| DELETE | `/spreed/api/v4/poll/{pollId}?conversationId={token}` | `Talk.closePoll()` |
-| POST | `/spreed/api/v4/poll/{pollId}/publish?conversationId={token}` | `Talk.publishPoll()` |
-| GET | `/spreed/api/v4/poll/{pollId}/results?conversationId={token}` | `Talk.getPollResults()` |
+| POST | `/spreed/api/v1/poll/{token}` | `Talk.createPoll({question, options[], resultMode, maxVotes})` |
+| GET | `/spreed/api/v1/poll/{token}/{pollId}` | `Talk.getPoll()` / `Talk.getPollResults()` (tallies + `votedSelf` + `numVoters`) |
+| POST | `/spreed/api/v1/poll/{token}/{pollId}` | `Talk.votePoll()` — body `{optionIds:[…]}` (`talk vote-poll --option-ids 1,2`) |
+| POST | `/spreed/api/v1/poll/{token}/{pollId}` | `Talk.unvotePoll()` — same route with empty `optionIds` (`talk unvote-poll`) |
+| DELETE | `/spreed/api/v1/poll/{token}/{pollId}` | `Talk.closePoll()` |
 
-**Remaining (Not Implemented):**
-| Method | Endpoint | Description | Complexity |
-|--------|----------|-------------|------------|
-| POST | `/spreed/api/v4/poll/{pollId}/vote` | Cast vote on poll option | Medium |
-| DELETE | `/spreed/api/v4/poll/{pollId}/vote` | Remove vote from poll | Medium |
-
-**Complexity Estimate (remaining):** **Low-Medium**  
-- Votes are simple JSON payloads; poll state is tracked server-side
+*Verified live:* create → vote → tally reflects the vote → unvote clears it → close.
 
 ---
 
@@ -344,28 +332,18 @@ The current implementation covers **6 major service areas** with varying levels 
 ---
 
 ### 2.8 Talk API v4 - Bot Management
-**Status:** ⚠️ Partial (List Only)  
+**Status:** ⚠️ Partial **by design** — the implemented surface is the *entire* API (2026-10-14 finding)  
+> **2026-10-14:** the original audit's registration/edit/icon endpoints **do not exist** (verified against spreed stable31 `routesBotController.php`, which matches the live server; unknown OCS routes return meta 998). The bot API exposes only: `GET /api/v1/bot/admin` (admin listing), `GET /api/v1/bot/{token}` (per-conversation listing), `POST|DELETE /api/v1/bot/{token}/{botId}` (enable/disable), plus webhook-driven send/react. **Registration, editing, removal, and icon management have no OCS endpoints** — they are admin-terminal-only: `occ talk:bot:install` / `occ talk:bot:remove`. Implementation code for register/edit/remove/icon was written during the 2026-10-14 sprint and *removed* once the routes file confirmed those endpoints never existed.
+
 **Implemented:**
 | Method | Endpoint | Function |
 |--------|----------|----------|
-| GET | `/spreed/api/v4/bot` | `Talk.listBots()` |
+| GET | `/spreed/api/v1/bot/admin` | `Talk.listBots()` (no `--token`; requires server admin) |
+| GET | `/spreed/api/v1/bot/{token}` | `Talk.listBots(token)` |
+| POST | `/spreed/api/v1/bot/{token}/{botId}` | `Talk.enableBotInConversation()` |
+| DELETE | `/spreed/api/v1/bot/{token}/{botId}` | `Talk.disableBotInConversation()` |
 
-**Missing Endpoints:**
-| Method | Endpoint | Description | Complexity |
-|--------|----------|-------------|------------|
-| POST | `/spreed/api/v4/bot` | Register new bot | Medium |
-| DELETE | `/spreed/api/v4/bot/{botId}` | Remove bot | Low |
-| GET | `/spreed/api/v4/bot/{botId}` | Get bot details | Low |
-| PUT | `/spreed/api/v4/bot/{botId}` | Update bot | Medium |
-| GET | `/spreed/api/v4/bot/{botId}/icon` | Get bot icon | Low |
-| PUT | `/spreed/api/v4/bot/{botId}/icon` | Update bot icon | Medium |
-| DELETE | `/spreed/api/v4/bot/{botId}/icon` | Delete bot icon | Low |
-
-**Complexity Estimate:** **Medium**  
-**Estimate Reasoning:**
-- Bot registration requires webhook URL and metadata
-- Icon upload follows standard file upload pattern
-- Bot management involves authentication token handling
+**Remaining:** none API-reachable. Admin terminal (`occ`) is the only path for bot lifecycle management.
 
 ---
 
@@ -436,23 +414,19 @@ The current implementation covers **6 major service areas** with varying levels 
 ---
 
 ### 3.2 Shares API - Additional Share Types
-**Status:** ❌ Not Implemented  
-**Missing Share Types:**
+**Status:** ⚠️ Mostly Implemented (Remote + Chat ✅ 2026-10-14; Email still missing)  
+> **2026-10-14 correction:** remote and chat shares do **not** have dedicated endpoints — they are ordinary `POST /ocs/v2.php/apps/files_sharing/api/v1/shares` calls with a different `shareType` (6 = remote, 10 = chat). The originally-audited `/remote.php/dav/share/` and `/share_chat` paths do not exist.
 
-| Share Type | Endpoint | Description | Complexity | Priority |
-|------------|----------|-------------|------------|----------|
-| Group Share | Already Implemented | ✅ | - | - |
-| User Share | Already Implemented | ✅ | - | - |
-| Public Link | Already Implemented | ✅ | - | - |
-| **Remote Share** | `/remote.php/dav/share/` | Share with federated cloud instance | High | Medium |
-| **Email Share** | `/ocs/v2.php/apps/files_sharing/api/v1/share_email` | Share via email (email notification) | High | Low |
-| **Chat Share** | `/ocs/v2.php/apps/files_sharing/api/v1/share_chat` | Share directly to chat conversation | Medium | Low |
+| Share Type | How | Description | Status |
+|------------|-----|-------------|--------|
+| Group Share | `shareType 1` | `Shares.createGroupShare()` (`shares create-group`) | ✅ |
+| User Share | `shareType 0` | `Shares.createUserShare()` (`shares create-user`) | ✅ |
+| Public Link | `shareType 3` | `Shares.createLink()` (`shares create-link`) | ✅ |
+| **Remote Share** | `shareType 6`, `shareWith = user@server` | `Shares.createRemoteShare()` (`shares create-remote`); optional `--permissions` / `--expire` | ✅ 2026-10-14 — endpoint wiring verified live (structured 403 "Failed to create share" against a fake peer; full success needs federation enabled) |
+| **Chat Share** | `shareType 10`, `shareWith = <roomToken>` | `Shares.createChatShare()` (`shares create-chat`) — server auto-posts the share message to the conversation and returns `sharedToConversation` | ✅ 2026-10-14 (live-verified) |
+| **Email Share** | `shareType 4` (email registration flow) | Requires mail server integration + guest-app registration on the recipient side | ❌ still missing |
 
-**Complexity Estimate:** **High**  
-**Estimate Reasoning:**
-- Remote shares require federated cloud setup (complex infrastructure)
-- Email shares require mail server integration
-- Chat shares require Talk API integration
+**Remaining complexity:** **High (email only)** — email shares need server mail configuration and the recipient-facing guest flow; there is no simple CLI-only path.
 
 ---
 
@@ -479,21 +453,16 @@ The current implementation covers **6 major service areas** with varying levels 
 ---
 
 ### 3.4 CardDAV - Additional Features
-**Status:** ❌ Mostly Not Implemented (BDAY, ANNIVERSARY, URL, ADR, ROLE, typed TEL/EMAIL ✅ implemented 2026-06 — see 1.8)  
-**Missing Features:**
+**Status:** ⚠️ PHOTO ✅ Implemented (2026-10-14, live-verified byte-identical download roundtrip); sync excluded from skill scope  
 
-| Feature | Description | Complexity | Priority |
-|---------|-------------|------------|----------|
-| vCard PHOTO field | Contact photo upload/download | Medium | Medium |
-| CardDAV sync collections | Sync-token based incremental sync | High | Medium |
-| vCard photo thumbnails | Generate contact photo thumbnails | Medium | Low |
-| vCard vCard4 support | Newer vCard format support | Medium | Low |
+| Feature | Status | Notes |
+|---------|--------|-------|
+| vCard PHOTO field | ✅ 2026-10-14 | `contacts create/edit --photo <img>` (RFC 6350 folded base64, png/jpg/jpeg/gif/webp/bmp) and `contacts photo --uid X [--output f]`. `contacts get` reports `hasPhoto`/`photoMime` without dumping the payload. Parses both v3 (`ENCODING=BASE64\|b;TYPE=…`) and v4 (`data:image/…;base64,`) encodings; editing a photo replaces the old value |
+| vCard photo thumbnails | — N/A | Thumbnails (PHOTO;VALUE=URI) are generated server-side by Sabre/Nextcloud previews; not a client API surface |
+| vCard vCard4 support | — partial by design | The CLI writes vCard 3.0 (Sabre normalizes on save); the parser accepts both v3 and v4 PHOTO encodings, matching what mixed servers return |
+| CardDAV sync collections | ❌ excluded | Deliberately excluded per product decision (2026-10-14): the skill is request/response oriented; sync-token state management would add persistence the CLI intentionally lacks |
 
-**Complexity Estimate:** **Medium**  
-**Estimate Reasoning:**
-- vCard field parsing requires comprehensive regex patterns
-- Photo handling involves base64 encoding/decoding
-- Sync tokens require state management
+*Implementation note:* raw vCard text extracted from DAV XML must be entity-decoded (`&#13;` → CR) before regex parsing or write-back; `utils.decodeNumericEntities()` does this in `findContactPath`, which also fixed a pre-existing bug where `contacts edit` PUT literal `&#13;` sequences back to the server (HTTP 415 on modern Sabre).
 
 ---
 
@@ -522,13 +491,14 @@ The current implementation covers **6 major service areas** with varying levels 
 
 | Category | Endpoints | Complexity | Priority |
 |----------|-----------|------------|----------|
-| **Avatar Management** | PUT/DELETE `/spreed/api/v4/room/{token}/avatar` | Low | Medium |
+| **Avatar Management** | ✅ Implemented 2026-10-14 (`/api/v1/room/{token}/avatar`, GET/POST/DELETE) | — | Done |
 | **Reaction Management** | ✅ Implemented 2026-06 (only "did I react" check remaining) | — | Done |
-| **Poll Management** | ⚠️ Lifecycle implemented 2026-06; `vote`/`unvote` endpoints remaining | Low | Medium |
+| **Poll Management** | ✅ Fully implemented incl. `vote`/`unvote` (2026-10-14; routes corrected v4→v1) | — | Done |
+| **Participant Management** | ✅ Implemented 2026-10-14 (list/join/leave/remove/promote/demote/per-attendee permissions) | — | Done |
 | **Breakout Rooms** | 7+ endpoints for room configuration | High | High |
 | **Call Management** | 8+ endpoints for call control | High | High |
 | **Call Recording** | 4 endpoints for recording lifecycle | Low | Low |
-| **Bot Management** | 5 endpoints for bot registration | Medium | Medium |
+| **Bot Management** | ⚠️ Partial by design — API surface (list/enable/disable) exhausted; registration is `occ` terminal only | — | Done |
 | **Webinar** | 6+ endpoints for webinar control | High | Medium |
 | **Settings** | ✅ Implemented 2026-06 via room subresource endpoints | — | Done |
 
@@ -551,16 +521,16 @@ The current implementation covers **6 major service areas** with varying levels 
 | Call Management | 🔴 High | 3-4 days | High |
 | File Trash | 🟡 Medium | 1-2 days | Medium |
 | ~~Talk Reactions~~ ✅ Done (2026-06) | — | — | — |
-| Poll Voting (`vote`/`unvote`) | 🟡 Medium | 0.5 day | Low |
+| ~~Poll Voting (`vote`/`unvote`)~~ ✅ Done (2026-10-14; v1 route correction) | — | — | — |
+| ~~Participant Management~~ ✅ Done (2026-10-14) | — | — | — |
 | **Medium Priority** | | | |
-| Participant Management | 🟡 Medium | 1-2 days | Medium |
-| Bot Management | 🟡 Medium | 1-2 days | Medium |
+| ~~Bot Management~~ ⚠️ Done as far as the API allows (2026-10-14); registration = `occ` terminal | — | — | — |
 | File Versions | 🟢 Low | 1-2 days | Medium |
 | Calendar Free/Busy | 🟢 Low | 2 days | Medium |
-| Contact Photos | 🟡 Medium | 1-2 days | Medium |
+| ~~Contact Photos~~ ✅ Done (2026-10-14) | — | — | — |
 | **Low Priority** | | | |
 | Calendar Recurrence | 🟢 Low | 2-3 days | High |
-| Remote Shares | 🟢 Low | 3-4 days | High |
+| ~~Remote Shares~~ ✅ Done (2026-10-14, `shareType 6` via OCS) | — | — | — |
 | Notes Attachments | 🟢 Low | 2-3 days | High |
 | Email Shares | 🟢 Low | 2-3 days | High |
 
@@ -578,35 +548,36 @@ The current implementation covers **6 major service areas** with varying levels 
 
 ## 5. Recommendations
 
-> **2026-10-14:** Talk Reactions and conversation settings (original Q2/Q3 items) are complete and removed below. Breakout rooms and call management were re-prioritized down — complex state machines with limited CLI value without real-time transport.
+> **2026-10-14:** Talk Reactions and conversation settings (original Q2/Q3 items) are complete and removed below. Breakout rooms and call management were re-prioritized down — complex state machines with limited CLI value without real-time transport.  
+> **2026-10-14 (impl sprint):** Participant Management, Poll Voting, Contact Photos, Conversation Avatars, and Remote + Chat Shares all landed the same day and are struck from the roadmap below.
 
 ### 5.1 Immediate Actions (Q4 2026)
-1. **Participant Management** (list/remove/promote/demote) - Essential for admin workflows
-2. **Poll Voting** (`vote`/`unvote`) - Completes the poll lifecycle
-3. **File Trash Operations** - Basic file management gap
+1. ~~**Participant Management** (list/remove/promote/demote)~~ ✅ Done 2026-10-14
+2. ~~**Poll Voting** (`vote`/`unvote`)~~ ✅ Done 2026-10-14
+3. **File Trash Operations** - Basic file management gap (only remaining immediate item)
 
 ### 5.2 Short-Term Enhancements (2027 H1)
-1. **Contact Photos** - Common contact management need
+1. ~~**Contact Photos**~~ ✅ Done 2026-10-14
 2. **File Versions** - Basic file version history
-3. **Conversation Avatars** - Low complexity, completes room management
+3. ~~**Conversation Avatars**~~ ✅ Done 2026-10-14
 4. **Note History Restore** - Completes the Notes history/backup feature
 
 ### 5.3 Long-Term Roadmap (2027+)
 1. **Breakout Rooms / Call Management** - Complex state machines, likely low CLI value without real-time transport
 2. **Calendar Recurrence Parsing** - Advanced scheduling needs (would replace regex iCalendar handling)
-3. **Remote Shares** - Federated cloud support
+3. ~~**Remote Shares**~~ ✅ Done 2026-10-14 (`shareType 6` via OCS + federation)
 4. **Notes Attachments** - Enhanced note functionality
 
 ---
 
 ## 6. Conclusion
 
-The current implementation provides **solid foundational coverage** of Nextcloud's core APIs. The CLI skill excels at basic CRUD operations for Notes, Files, CalDAV, CardDAV, and now covers most of the practical Talk API surface (chat, reactions, poll lifecycle, room settings, bots) alongside core Shares functionality.
+The current implementation provides **solid foundational coverage** of Nextcloud's core APIs. The CLI skill excels at basic CRUD operations for Notes, Files, CalDAV, CardDAV (including contact photos), and now covers most of the practical Talk API surface (chat, reactions, full poll lifecycle incl. voting, room settings, participant management, conversation avatars, bot enable/disable) alongside Shares (link/user/group/remote/chat).
 
 **Key Gaps:**
-- **Talk API:** Participant listing/removal, avatars, breakout rooms, call control, recording, webinar, poll voting
+- **Talk API:** Breakout rooms, call control, recording, webinar (all state-machine / real-time oriented; see 2.5/2.6/2.9)
 - **Files API:** Missing trash, versions, favorites, and advanced sharing options
-- **CalDAV/CardDAV:** Missing recurrence parsing, free/busy, alarms, contact photos, and sync-token support
+- **CalDAV/CardDAV:** Missing recurrence parsing, free/busy, alarms, and sync-token support (sync intentionally excluded)
 
 **Strengths:**
 - Well-structured module design with consistent error handling
@@ -624,3 +595,4 @@ The current implementation provides **solid foundational coverage** of Nextcloud
 |------|-------|
 | 2026-05-31 | Original audit against monolithic `index.js` |
 | 2026-10-14 | Re-audit against `src/` modules after the `feature/nextcloud-talk-integration` sprint: Notes categories/history/backup (`37d0e9b`), CardDAV extended vCard fields (`ad321eb`), CalDAV calendar colors (`11161b7`), Talk reactions (`92ac079`) and poll lifecycle (`bd1e52d`), conversation/guest settings via room subresource endpoints (`509dc31`, `009af5e`). Corrected the non-existent `/spreed/api/v4/settings/{token}` endpoint claims and bot API version (`v1`, not `v4`); re-prioritized the recommendations matrix |
+| 2026-10-14 (impl sprint) | Implemented against a live Nextcloud 34 / Talk instance: participant management (2.1 ✅), conversation avatars (2.2 ✅), poll voting (2.4 ✅), remote + chat shares (3.2 ✅), contact PHOTO (3.4 ✅). **Route corrections:** polls live under `/api/v1/poll/{token}…` (the v4 paths, `publish` and `results` endpoints never existed — `publish-poll` removed; create body uses `resultMode`/`maxVotes`); avatar upload is `POST` with multipart field `file`; participants join/leave via `/participants/active`, remove via `DELETE /attendees`, permissions via `/attendees/permissions`. **Finding:** bot registration/edit/icon have **no OCS API** (verified vs spreed `routesBotController.php`) — `occ talk:bot:install` terminal only. Also fixed vCard XML-entity handling (`&#13;` decode) which had been corrupting `contacts edit` round-trips (HTTP 415) |

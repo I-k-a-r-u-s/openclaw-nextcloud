@@ -74,3 +74,80 @@ test("_updateVCardField escapes vCard values", () => {
   const updated = Contacts._updateVCardField(vcard, "NOTE", "Line\nBreak");
   assert.match(updated, /NOTE:Line\\nBreak/);
 });
+
+test("_foldVCardLine leaves short lines untouched", () => {
+  const line = "A".repeat(74);
+  assert.equal(Contacts._foldVCardLine(line), line);
+});
+
+test("_foldVCardLine folds long lines with leading-space continuations", () => {
+  const original = "PHOTO;ENCODING=BASE64;TYPE=PNG:" + "A".repeat(200);
+  const folded = Contacts._foldVCardLine(original);
+  const lines = folded.split("\n");
+  assert.ok(lines.length > 1);
+  for (const line of lines) {
+    assert.ok(line.length <= 75, `folded line too long: ${line.length}`);
+  }
+  for (const line of lines.slice(1)) {
+    assert.ok(line.startsWith(" "));
+  }
+  // Unfolding must restore the exact original value.
+  assert.equal(folded.replace(/\r?\n[ \t]/g, ""), original);
+});
+
+test("_removeVCardField removes folded PHOTO (LF and CRLF)", () => {
+  const lf = [
+    "BEGIN:VCARD",
+    "VERSION:3.0",
+    "FN:John",
+    "PHOTO;ENCODING=BASE64;TYPE=PNG:AAAA",
+    " BBBB",
+    "END:VCARD",
+  ].join("\n");
+  const removedLF = Contacts._removeVCardField(lf, "PHOTO");
+  assert.ok(!removedLF.includes("PHOTO"));
+  assert.ok(!removedLF.includes("BBBB"));
+  assert.match(removedLF, /FN:John/);
+  assert.match(removedLF, /END:VCARD/);
+
+  const crlf = lf.replace(/\n/g, "\r\n");
+  const removedCRLF = Contacts._removeVCardField(crlf, "PHOTO");
+  assert.ok(!removedCRLF.includes("PHOTO"));
+  assert.ok(!removedCRLF.includes("BBBB"));
+});
+
+test("_parseVCard detects photo with v3 TYPE param", () => {
+  const vcard = [
+    "BEGIN:VCARD",
+    "VERSION:3.0",
+    "UID:x-1",
+    "FN:John",
+    "PHOTO;ENCODING=B;TYPE=PNG:iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJ",
+    " AAAAD",
+    "END:VCARD",
+  ].join("\r\n");
+  const contact = Contacts._parseVCard(vcard);
+  assert.equal(contact.hasPhoto, true);
+  assert.equal(contact.photoMime, "image/png");
+});
+
+test("_parseVCard detects photo with v4 data-URI", () => {
+  const vcard = [
+    "BEGIN:VCARD",
+    "VERSION:4.0",
+    "UID:x-2",
+    "FN:Jane",
+    "PHOTO:data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD",
+    "END:VCARD",
+  ].join("\r\n");
+  const contact = Contacts._parseVCard(vcard);
+  assert.equal(contact.hasPhoto, true);
+  assert.equal(contact.photoMime, "image/jpeg");
+});
+
+test("_parseVCard without photo reports hasPhoto false", () => {
+  const vcard = "BEGIN:VCARD\nVERSION:3.0\nUID:x-3\nFN:No Photo\nEND:VCARD";
+  const contact = Contacts._parseVCard(vcard);
+  assert.equal(contact.hasPhoto, false);
+  assert.equal(contact.photoMime, null);
+});

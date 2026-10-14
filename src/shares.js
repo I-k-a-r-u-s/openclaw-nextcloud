@@ -186,4 +186,89 @@ export const Shares = {
     unwrap(envelope);
     return { id, status: "deleted" };
   },
+
+  // shareType 6 (remote/federated): share with a user on another Nextcloud
+  // server. Requires Federated File Sharing to be enabled on both servers.
+  async createRemoteShare({
+    path,
+    remoteUser,
+    permissions = "read",
+    expireDate = null,
+  }) {
+    if (!path) throw new Error("Missing path for share");
+    if (!remoteUser)
+      throw new Error(
+        "Missing --remote-user (format: user@nextcloud.example.com)",
+      );
+    if (!remoteUser.includes("@"))
+      throw new Error(
+        "--remote-user must include the remote server, e.g. user@nextcloud.example.com",
+      );
+
+    const cleanPath = path.startsWith("/") ? path : `/${path}`;
+    const permMap = { read: 1, edit: 15, delete: 31 };
+    const perms = permMap[permissions];
+    if (perms === undefined) {
+      throw new Error(
+        `Unknown --permissions '${permissions}'. Use 'read', 'edit', or 'delete'.`,
+      );
+    }
+
+    const body = new URLSearchParams({
+      path: cleanPath,
+      shareType: "6",
+      shareWith: remoteUser,
+      permissions: String(perms),
+    });
+    if (expireDate) body.set("expireDate", expireDate);
+
+    const envelope = await request(
+      "/ocs/v2.php/apps/files_sharing/api/v1/shares",
+      {
+        method: "POST",
+        headers: {
+          ...OCS_HEADERS,
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: body.toString(),
+      },
+    );
+    return normalize(unwrap(envelope));
+  },
+
+  // shareType 10 (room/Talk): share into a conversation. Nextcloud's Talk
+  // share listener posts the shared file as a message in the room.
+  async createChatShare({ path, roomToken, permissions = "read" }) {
+    if (!path) throw new Error("Missing path for share");
+    if (!roomToken) throw new Error("Missing --token (conversation token)");
+
+    const cleanPath = path.startsWith("/") ? path : `/${path}`;
+    const permMap = { read: 1, edit: 15 };
+    const perms = permMap[permissions];
+    if (perms === undefined) {
+      throw new Error(
+        `Unknown --permissions '${permissions}'. Use 'read' or 'edit'.`,
+      );
+    }
+
+    const body = new URLSearchParams({
+      path: cleanPath,
+      shareType: "10",
+      shareWith: roomToken,
+      permissions: String(perms),
+    });
+
+    const envelope = await request(
+      "/ocs/v2.php/apps/files_sharing/api/v1/shares",
+      {
+        method: "POST",
+        headers: {
+          ...OCS_HEADERS,
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: body.toString(),
+      },
+    );
+    return { ...normalize(unwrap(envelope)), sharedToConversation: roomToken };
+  },
 };

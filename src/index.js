@@ -71,6 +71,12 @@ const COMMON_OPTIONS = {
   url: { type: "string" },
   role: { type: "string" },
   address: { type: "string" },
+  photo: { type: "string" },
+  participant: { type: "string" },
+  attendee: { type: "string" },
+  method: { type: "string" },
+  "option-ids": { type: "string" },
+  "remote-user": { type: "string" },
 };
 
 async function main() {
@@ -426,6 +432,31 @@ async function handleShares(subCommand, values) {
       );
       break;
     }
+    case "create-remote": {
+      if (!values.path) throw new Error("Missing --path");
+      if (!values["remote-user"]) throw new Error("Missing --remote-user");
+      output(
+        await Shares.createRemoteShare({
+          path: values.path,
+          remoteUser: values["remote-user"],
+          permissions: values.permissions,
+          expireDate: values.expire,
+        }),
+      );
+      break;
+    }
+    case "create-chat": {
+      if (!values.path) throw new Error("Missing --path");
+      if (!values.token) throw new Error("Missing --token");
+      output(
+        await Shares.createChatShare({
+          path: values.path,
+          roomToken: values.token,
+          permissions: values.permissions,
+        }),
+      );
+      break;
+    }
     case "delete": {
       if (!values.id) throw new Error("Missing --id");
       output(await Shares.delete({ id: values.id }));
@@ -641,12 +672,6 @@ async function handleTalk(subCommand, values) {
       output(await Talk.closePoll(values.token, values["poll-id"]));
       break;
     }
-    case "publish-poll": {
-      if (!values.token) throw new Error("Missing --token");
-      if (!values["poll-id"]) throw new Error("Missing --poll-id");
-      output(await Talk.publishPoll(values.token, values["poll-id"]));
-      break;
-    }
     case "get-poll-results": {
       if (!values.token) throw new Error("Missing --token");
       if (!values["poll-id"]) throw new Error("Missing --poll-id");
@@ -680,6 +705,104 @@ async function handleTalk(subCommand, values) {
       output(
         await Talk.updateGuestSettings(values.token, buildTalkSettings(values)),
       );
+      break;
+    }
+    case "participants": {
+      if (!values.token) throw new Error("Missing --token");
+      output(await Talk.listParticipants(values.token));
+      break;
+    }
+    case "join": {
+      if (!values.token) throw new Error("Missing --token");
+      output(await Talk.joinConversation(values.token));
+      break;
+    }
+    case "leave": {
+      if (!values.token) throw new Error("Missing --token");
+      output(await Talk.leaveConversation(values.token));
+      break;
+    }
+    case "remove-participant": {
+      if (!values.token) throw new Error("Missing --token");
+      if (!values.participant)
+        throw new Error("Missing --participant (attendee ID)");
+      output(
+        await Talk.removeParticipant(
+          values.token,
+          parseInt(values.participant, 10),
+        ),
+      );
+      break;
+    }
+    case "promote": {
+      if (!values.token) throw new Error("Missing --token");
+      if (!values.attendee) throw new Error("Missing --attendee (attendee ID)");
+      output(
+        await Talk.promoteParticipant(
+          values.token,
+          parseInt(values.attendee, 10),
+        ),
+      );
+      break;
+    }
+    case "demote": {
+      if (!values.token) throw new Error("Missing --token");
+      if (!values.attendee) throw new Error("Missing --attendee (attendee ID)");
+      output(
+        await Talk.demoteParticipant(
+          values.token,
+          parseInt(values.attendee, 10),
+        ),
+      );
+      break;
+    }
+    case "set-participant-permissions": {
+      if (!values.token) throw new Error("Missing --token");
+      if (!values.attendee) throw new Error("Missing --attendee (attendee ID)");
+      if (!values.permissions)
+        throw new Error("Missing --permissions (bitmask)");
+      output(
+        await Talk.updateParticipantPermissions(
+          values.token,
+          parseInt(values.attendee, 10),
+          values.method || "set",
+          parseInt(values.permissions, 10),
+        ),
+      );
+      break;
+    }
+    case "vote-poll": {
+      if (!values.token) throw new Error("Missing --token");
+      if (!values["poll-id"]) throw new Error("Missing --poll-id");
+      if (!values["option-ids"])
+        throw new Error("Missing --option-ids (comma-separated, e.g. 1,2)");
+      const ids = values["option-ids"]
+        .split(",")
+        .map((s) => parseInt(s.trim(), 10))
+        .filter((n) => !Number.isNaN(n));
+      output(await Talk.votePoll(values.token, values["poll-id"], ids));
+      break;
+    }
+    case "unvote-poll": {
+      if (!values.token) throw new Error("Missing --token");
+      if (!values["poll-id"]) throw new Error("Missing --poll-id");
+      output(await Talk.unvotePoll(values.token, values["poll-id"]));
+      break;
+    }
+    case "get-avatar": {
+      if (!values.token) throw new Error("Missing --token");
+      output(await Talk.getAvatar(values.token, values.output || null));
+      break;
+    }
+    case "set-avatar": {
+      if (!values.token) throw new Error("Missing --token");
+      if (!values.file) throw new Error("Missing --file (image path)");
+      output(await Talk.setAvatar(values.token, values.file));
+      break;
+    }
+    case "delete-avatar": {
+      if (!values.token) throw new Error("Missing --token");
+      output(await Talk.deleteAvatar(values.token));
       break;
     }
     default:
@@ -717,6 +840,7 @@ async function handleContacts(subCommand, values) {
       if (values.url) options.url = values.url;
       if (values.role) options.role = values.role;
       if (values.address) options.address = values.address;
+      if (values.photo) options.photo = values.photo;
       output(await Contacts.create(values.name, values.addressbook, options));
       break;
     }
@@ -736,7 +860,19 @@ async function handleContacts(subCommand, values) {
       if (values.url !== undefined) updates.url = values.url;
       if (values.role !== undefined) updates.role = values.role;
       if (values.address !== undefined) updates.address = values.address;
+      if (values.photo !== undefined) updates.photo = values.photo;
       output(await Contacts.update(values.uid, values.addressbook, updates));
+      break;
+    }
+    case "photo": {
+      if (!values.uid) throw new Error("Missing --uid");
+      output(
+        await Contacts.getPhoto(
+          values.uid,
+          values.addressbook,
+          values.output || null,
+        ),
+      );
       break;
     }
     case "delete": {

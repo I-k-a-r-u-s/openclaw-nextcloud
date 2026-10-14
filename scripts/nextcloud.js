@@ -17981,6 +17981,17 @@ function xmlEscape(str) {
     return map[c];
   });
 }
+function decodeNumericEntities(str) {
+  if (typeof str !== "string") return str;
+  return str.replace(/&#(x?)([0-9a-f]+);/gi, (m, hex, digits) => {
+    const cp = parseInt(digits, hex ? 16 : 10);
+    try {
+      return String.fromCodePoint(cp);
+    } catch {
+      return m;
+    }
+  });
+}
 function icalEscape(str) {
   if (str === null || str === void 0) return "";
   return String(str).replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\n/g, "\\n");
@@ -17991,6 +18002,18 @@ function vcardEscape(str) {
 }
 function formatCalDavDate(date) {
   return date.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
+}
+function guessImageMime(filePath) {
+  const ext = String(filePath).toLowerCase().split(".").pop() || "";
+  const map = {
+    png: "image/png",
+    jpg: "image/jpeg",
+    jpeg: "image/jpeg",
+    gif: "image/gif",
+    webp: "image/webp",
+    bmp: "image/bmp"
+  };
+  return map[ext] || null;
 }
 
 // src/files.js
@@ -18827,10 +18850,88 @@ var Shares = {
     );
     unwrap(envelope);
     return { id, status: "deleted" };
+  },
+  // shareType 6 (remote/federated): share with a user on another Nextcloud
+  // server. Requires Federated File Sharing to be enabled on both servers.
+  async createRemoteShare({
+    path,
+    remoteUser,
+    permissions = "read",
+    expireDate = null
+  }) {
+    if (!path) throw new Error("Missing path for share");
+    if (!remoteUser)
+      throw new Error(
+        "Missing --remote-user (format: user@nextcloud.example.com)"
+      );
+    if (!remoteUser.includes("@"))
+      throw new Error(
+        "--remote-user must include the remote server, e.g. user@nextcloud.example.com"
+      );
+    const cleanPath = path.startsWith("/") ? path : `/${path}`;
+    const permMap = { read: 1, edit: 15, delete: 31 };
+    const perms = permMap[permissions];
+    if (perms === void 0) {
+      throw new Error(
+        `Unknown --permissions '${permissions}'. Use 'read', 'edit', or 'delete'.`
+      );
+    }
+    const body = new URLSearchParams({
+      path: cleanPath,
+      shareType: "6",
+      shareWith: remoteUser,
+      permissions: String(perms)
+    });
+    if (expireDate) body.set("expireDate", expireDate);
+    const envelope = await request(
+      "/ocs/v2.php/apps/files_sharing/api/v1/shares",
+      {
+        method: "POST",
+        headers: {
+          ...OCS_HEADERS,
+          "Content-Type": "application/x-www-form-urlencoded"
+        },
+        body: body.toString()
+      }
+    );
+    return normalize(unwrap(envelope));
+  },
+  // shareType 10 (room/Talk): share into a conversation. Nextcloud's Talk
+  // share listener posts the shared file as a message in the room.
+  async createChatShare({ path, roomToken, permissions = "read" }) {
+    if (!path) throw new Error("Missing path for share");
+    if (!roomToken) throw new Error("Missing --token (conversation token)");
+    const cleanPath = path.startsWith("/") ? path : `/${path}`;
+    const permMap = { read: 1, edit: 15 };
+    const perms = permMap[permissions];
+    if (perms === void 0) {
+      throw new Error(
+        `Unknown --permissions '${permissions}'. Use 'read' or 'edit'.`
+      );
+    }
+    const body = new URLSearchParams({
+      path: cleanPath,
+      shareType: "10",
+      shareWith: roomToken,
+      permissions: String(perms)
+    });
+    const envelope = await request(
+      "/ocs/v2.php/apps/files_sharing/api/v1/shares",
+      {
+        method: "POST",
+        headers: {
+          ...OCS_HEADERS,
+          "Content-Type": "application/x-www-form-urlencoded"
+        },
+        body: body.toString()
+      }
+    );
+    return { ...normalize(unwrap(envelope)), sharedToConversation: roomToken };
   }
 };
 
 // src/talk.js
+import fs2 from "node:fs";
 var Talk = {
   async listConversations() {
     const data = await request("/ocs/v2.php/apps/spreed/api/v4/room", {
@@ -19085,28 +19186,38 @@ var Talk = {
     );
     return data.ocs?.data || [];
   },
+  // Talk's poll API lives under v1 (see spreed routesPollController.php).
   async createPoll(token, question, options) {
     if (!token) throw new Error("Conversation token is required.");
     if (!question) throw new Error("Poll question is required.");
-    if (!options || !Array.isArray(options) || options.length === 0) {
-      throw new Error("Poll options are required (at least one option).");
+    if (!options || !Array.isArray(options) || options.length < 2) {
+      throw new Error("Poll requires at least two options.");
     }
-    const data = await request("/ocs/v2.php/apps/spreed/api/v4/poll", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        conversationId: token,
-        question,
-        options
-      })
-    });
+    const data = await request(
+      `/ocs/v2.php/apps/spreed/api/v1/poll/${token}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json"
+        },
+        body: JSON.stringify({
+          question,
+          options,
+          // current Talk requires resultMode/maxVotes (renamed from
+          // voteMode/voteMax); 0 = anonymous, maxVotes 1 = single choice
+          resultMode: 0,
+          maxVotes: 1
+        })
+      }
+    );
     return data.ocs?.data || {};
   },
   async getPoll(token, pollId) {
     if (!token) throw new Error("Conversation token is required.");
     if (!pollId) throw new Error("Poll ID is required.");
     const data = await request(
-      `/ocs/v2.php/apps/spreed/api/v4/poll/${pollId}?conversationId=${token}`,
+      `/ocs/v2.php/apps/spreed/api/v1/poll/${token}/${pollId}`,
       { headers: { Accept: "application/json" } }
     );
     return data.ocs?.data || {};
@@ -19114,26 +19225,18 @@ var Talk = {
   async closePoll(token, pollId) {
     if (!token) throw new Error("Conversation token is required.");
     if (!pollId) throw new Error("Poll ID is required.");
-    await request(
-      `/ocs/v2.php/apps/spreed/api/v4/poll/${pollId}?conversationId=${token}`,
-      { method: "DELETE" }
-    );
+    await request(`/ocs/v2.php/apps/spreed/api/v1/poll/${token}/${pollId}`, {
+      method: "DELETE"
+    });
     return { token, pollId, status: "closed" };
   },
-  async publishPoll(token, pollId) {
-    if (!token) throw new Error("Conversation token is required.");
-    if (!pollId) throw new Error("Poll ID is required.");
-    const data = await request(
-      `/ocs/v2.php/apps/spreed/api/v4/poll/${pollId}/publish?conversationId=${token}`,
-      { method: "POST", headers: { "Content-Type": "application/json" } }
-    );
-    return data.ocs?.data || {};
-  },
+  // There is no separate "results" endpoint: showPoll returns vote counts
+  // plus per-voter details (when the vote mode allows it).
   async getPollResults(token, pollId) {
     if (!token) throw new Error("Conversation token is required.");
     if (!pollId) throw new Error("Poll ID is required.");
     const data = await request(
-      `/ocs/v2.php/apps/spreed/api/v4/poll/${pollId}/results?conversationId=${token}`,
+      `/ocs/v2.php/apps/spreed/api/v1/poll/${token}/${pollId}`,
       { headers: { Accept: "application/json" } }
     );
     return data.ocs?.data || {};
@@ -19230,11 +19333,199 @@ var Talk = {
   },
   async updateGuestSettings(token, settings) {
     return this.updateSettings(token, settings);
+  },
+  // ---- Participant management ----
+  async listParticipants(token) {
+    if (!token) throw new Error("Conversation token is required.");
+    const data = await request(
+      `/ocs/v2.php/apps/spreed/api/v4/room/${token}/participants`,
+      { headers: { Accept: "application/json" } }
+    );
+    const payload = data.ocs?.data;
+    if (Array.isArray(payload)) return payload;
+    return ensureArray(payload?.items ?? []);
+  },
+  async joinConversation(token) {
+    if (!token) throw new Error("Conversation token is required.");
+    const data = await request(
+      `/ocs/v2.php/apps/spreed/api/v4/room/${token}/participants/active`,
+      { method: "POST", headers: { Accept: "application/json" } }
+    );
+    return data.ocs?.data ?? { token, status: "joined" };
+  },
+  async leaveConversation(token) {
+    if (!token) throw new Error("Conversation token is required.");
+    await request(
+      `/ocs/v2.php/apps/spreed/api/v4/room/${token}/participants/active`,
+      { method: "DELETE", headers: { Accept: "application/json" } }
+    );
+    return { token, status: "left" };
+  },
+  async removeParticipant(token, participantAttendeeId) {
+    if (!token) throw new Error("Conversation token is required.");
+    if (!participantAttendeeId)
+      throw new Error("Participant attendee ID is required.");
+    await request(`/ocs/v2.php/apps/spreed/api/v4/room/${token}/attendees`, {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json"
+      },
+      body: JSON.stringify({ attendee: participantAttendeeId })
+    });
+    return { token, participant: participantAttendeeId, status: "removed" };
+  },
+  async promoteParticipant(token, attendeeId) {
+    if (!token) throw new Error("Conversation token is required.");
+    if (!attendeeId) throw new Error("Attendee ID is required.");
+    await request(`/ocs/v2.php/apps/spreed/api/v4/room/${token}/moderators`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json"
+      },
+      body: JSON.stringify({ attendee: attendeeId })
+    });
+    return { token, attendee: attendeeId, status: "promoted" };
+  },
+  async demoteParticipant(token, attendeeId) {
+    if (!token) throw new Error("Conversation token is required.");
+    if (!attendeeId) throw new Error("Attendee ID is required.");
+    await request(`/ocs/v2.php/apps/spreed/api/v4/room/${token}/moderators`, {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json"
+      },
+      body: JSON.stringify({ attendee: attendeeId })
+    });
+    return { token, attendee: attendeeId, status: "demoted" };
+  },
+  async updateParticipantPermissions(token, attendeeId, method = "set", permissions) {
+    if (!token) throw new Error("Conversation token is required.");
+    if (!attendeeId) throw new Error("Attendee ID is required.");
+    if (permissions === void 0 || permissions === null)
+      throw new Error("Permissions bitmask is required.");
+    if (!["set", "add", "remove"].includes(method))
+      throw new Error("Method must be one of: set, add, remove.");
+    const data = await request(
+      `/ocs/v2.php/apps/spreed/api/v4/room/${token}/attendees/permissions`,
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json"
+        },
+        body: JSON.stringify({ attendee: attendeeId, method, permissions })
+      }
+    );
+    return data.ocs?.data ?? {
+      token,
+      attendee: attendeeId,
+      method,
+      permissions,
+      status: "updated"
+    };
+  },
+  // ---- Poll voting ----
+  // Voting (and unvoting, via an empty option list) is a POST to the poll
+  // resource itself (spreed Poll#votePoll route).
+  async votePoll(token, pollId, optionIds) {
+    if (!token) throw new Error("Conversation token is required.");
+    if (!pollId) throw new Error("Poll ID is required.");
+    if (!Array.isArray(optionIds) || optionIds.length === 0)
+      throw new Error("At least one option ID is required (use unvote to clear).");
+    await request(
+      `/ocs/v2.php/apps/spreed/api/v1/poll/${token}/${pollId}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json"
+        },
+        body: JSON.stringify({ optionIds })
+      }
+    );
+    return { token, pollId, voted: optionIds, status: "recorded" };
+  },
+  async unvotePoll(token, pollId) {
+    if (!token) throw new Error("Conversation token is required.");
+    if (!pollId) throw new Error("Poll ID is required.");
+    await request(
+      `/ocs/v2.php/apps/spreed/api/v1/poll/${token}/${pollId}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json"
+        },
+        body: JSON.stringify({ optionIds: [] })
+      }
+    );
+    return { token, pollId, status: "vote-removed" };
+  },
+  // ---- Conversation avatars ----
+  async getAvatar(token, outputPath = null) {
+    if (!token) throw new Error("Conversation token is required.");
+    const response = await fetchRaw(
+      `/ocs/v2.php/apps/spreed/api/v1/room/${token}/avatar`
+    );
+    if (response.status === 404) {
+      return { token, error: "No avatar set for this conversation." };
+    }
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+    const contentType = response.headers.get("content-type") || "image/jpeg";
+    const ext = contentType.includes("png") ? "png" : contentType.includes("svg") ? "svg" : "jpg";
+    const buffer = Buffer.from(await response.arrayBuffer());
+    const file = outputPath || `avatar-${token}.${ext}`;
+    fs2.writeFileSync(file, buffer);
+    const fallback = contentType.includes("svg");
+    return {
+      token,
+      path: file,
+      contentType,
+      bytes: buffer.length,
+      ...fallback ? { fallback: true, note: "Generated placeholder; no custom avatar set." } : {}
+    };
+  },
+  async setAvatar(token, filePath) {
+    if (!token) throw new Error("Conversation token is required.");
+    if (!filePath) throw new Error("File path is required.");
+    if (!fs2.existsSync(filePath))
+      throw new Error(`File not found: ${filePath}`);
+    const mime = guessImageMime(filePath);
+    if (!mime) throw new Error("Avatar must be a png/jpg/jpeg image.");
+    const buffer = fs2.readFileSync(filePath);
+    const form = new FormData();
+    form.append(
+      "file",
+      new Blob([buffer], { type: mime }),
+      filePath.split("/").pop()
+    );
+    await request(`/ocs/v2.php/apps/spreed/api/v1/room/${token}/avatar`, {
+      method: "POST",
+      body: form
+    });
+    return { token, file: filePath, status: "avatar-uploaded" };
+  },
+  async deleteAvatar(token) {
+    if (!token) throw new Error("Conversation token is required.");
+    await request(`/ocs/v2.php/apps/spreed/api/v1/room/${token}/avatar`, {
+      method: "DELETE"
+    });
+    return { token, status: "avatar-deleted" };
   }
+  // NOTE: Bot registration/edit/removal has NO OCS API endpoints (verified
+  // against spreed routesBotController.php: only list/enable/disable/send/
+  // react exist). Bots must be installed via the admin terminal:
+  //   ./occ talk:bot:install ... / ./occ talk:bot:remove <name>
 };
 
 // src/contacts.js
 import crypto2 from "node:crypto";
+import fs3 from "node:fs";
 var Contacts = {
   async findAddressBooks() {
     const endpoint = `/remote.php/dav/addressbooks/users/${CONFIG.user}/`;
@@ -19368,6 +19659,14 @@ var Contacts = {
     const org = getField("ORG");
     const title = getField("TITLE");
     const note = getField("NOTE");
+    const photoMatch = vcard.match(/^PHOTO([^:\n]*):/mi);
+    let photoMime = null;
+    if (photoMatch) {
+      const firstValue = vcard.match(/^PHOTO[^:\n]*:([^\n]*)/mi)?.[1] || "";
+      const dataUri = firstValue.match(/^data:image\/([a-z0-9.+-]+)/i);
+      const typeParam = photoMatch[1].match(/TYPE=([A-Za-z0-9.+-]+)/i);
+      photoMime = dataUri ? `image/${dataUri[1].toLowerCase()}` : typeParam ? `image/${typeParam[1].toLowerCase()}` : null;
+    }
     return {
       uid,
       fullName: fn,
@@ -19381,7 +19680,9 @@ var Contacts = {
       addresses: parsedAddresses,
       organization: org,
       title,
-      note
+      note,
+      hasPhoto: !!photoMatch,
+      photoMime
     };
   },
   async get(uid, addressBookName = null) {
@@ -19430,7 +19731,9 @@ var Contacts = {
           return {
             href: responses[0]["d:href"],
             etag: propstats[0]["d:prop"]["d:getetag"],
-            data: propstats[0]["d:prop"]["card:address-data"],
+            data: decodeNumericEntities(
+              propstats[0]["d:prop"]["card:address-data"]
+            ),
             addressBookUrl: ab.url
           };
         }
@@ -19489,6 +19792,7 @@ FN:${vcardEscape(fullName)}
       vcard += `ADR:;;${addrParts.map(vcardEscape).join(";")}
 `;
     }
+    if (options.photo) vcard += this._photoVCardLine(options.photo);
     vcard += `END:VCARD`;
     const filename = `${uid}.vcf`;
     const urlWithSlash = ab.url.endsWith("/") ? ab.url : ab.url + "/";
@@ -19515,6 +19819,62 @@ FN:${vcardEscape(fullName)}
       `${field}:${vcardEscape(value)}
 END:VCARD`
     );
+  },
+  // RFC 6350 line folding (>75 octets split with leading-space continuations;
+  // base64 payloads are ASCII so char count == octet count).
+  _foldVCardLine(line) {
+    const MAX = 74;
+    if (line.length <= MAX) return line;
+    let out = line.slice(0, MAX);
+    let rest = line.slice(MAX);
+    while (rest.length > MAX - 1) {
+      out += "\n " + rest.slice(0, MAX - 1);
+      rest = rest.slice(MAX - 1);
+    }
+    if (rest) out += "\n " + rest;
+    return out;
+  },
+  _photoVCardLine(filePath) {
+    if (!fs3.existsSync(filePath))
+      throw new Error(`Photo file not found: ${filePath}`);
+    const mime = guessImageMime(filePath);
+    if (!mime)
+      throw new Error("Photo must be one of: png, jpg, jpeg, gif, webp, bmp.");
+    const b64 = fs3.readFileSync(filePath).toString("base64");
+    const type = mime.split("/")[1].toUpperCase();
+    return this._foldVCardLine(`PHOTO;ENCODING=BASE64;TYPE=${type}:${b64}`) + "\n";
+  },
+  // Removes a (possibly folded) vCard entry entirely.
+  _removeVCardField(vcard, field) {
+    const re = new RegExp(
+      `^${field}(?:;[^\\n]*)?:[^\\n]*(?:\\r?\\n[ \\t][^\\r\\n]*)*\\r?\\n?`,
+      "gmi"
+    );
+    return vcard.replace(re, "");
+  },
+  async getPhoto(uid, addressBookName = null, outputPath = null) {
+    const contact = await this.findContactPath(uid, addressBookName);
+    if (!contact) throw new Error(`Contact ${uid} not found.`);
+    const m = contact.data.match(
+      /^PHOTO([^:\n]*):([^\r\n]*(?:\r?\n[ \t][^\r\n]*)*)/mi
+    );
+    if (!m) throw new Error("Contact has no PHOTO field.");
+    const value = m[2].replace(/\r?\n[ \t]/g, "").replace(/\s+/g, "");
+    let b64 = value;
+    let mime = null;
+    const dataUri = value.match(/^data:image\/([a-z0-9.+-]+);base64,(.*)$/i);
+    if (dataUri) {
+      mime = `image/${dataUri[1].toLowerCase()}`;
+      b64 = dataUri[2];
+    } else {
+      const tp = m[1].match(/TYPE=([A-Za-z0-9.+-]+)/i);
+      mime = tp ? `image/${tp[1].toLowerCase()}` : "image/jpeg";
+    }
+    const ext = (mime.split("/")[1] || "jpg").replace(/[^a-z0-9]/g, "") || "jpg";
+    const file = outputPath || `${uid}.${ext}`;
+    const buffer = Buffer.from(b64, "base64");
+    fs3.writeFileSync(file, buffer);
+    return { uid, path: file, mime, bytes: buffer.length };
   },
   async update(uid, addressBookName, updates) {
     const contact = await this.findContactPath(uid, addressBookName);
@@ -19553,6 +19913,13 @@ END:VCARD`
     if (updates.address) {
       const addrParts = updates.address.split("|");
       vcard = this._updateVCardField(vcard, "ADR", `;;${addrParts.join(";")}`);
+    }
+    if (updates.photo) {
+      vcard = this._removeVCardField(vcard, "PHOTO");
+      vcard = vcard.replace(
+        "END:VCARD",
+        this._photoVCardLine(updates.photo) + "END:VCARD"
+      );
     }
     await request(contact.href, {
       method: "PUT",
@@ -19693,7 +20060,13 @@ var COMMON_OPTIONS = {
   anniversary: { type: "string" },
   url: { type: "string" },
   role: { type: "string" },
-  address: { type: "string" }
+  address: { type: "string" },
+  photo: { type: "string" },
+  participant: { type: "string" },
+  attendee: { type: "string" },
+  method: { type: "string" },
+  "option-ids": { type: "string" },
+  "remote-user": { type: "string" }
 };
 async function main() {
   validateConfig();
@@ -19812,8 +20185,8 @@ async function handleNotes(subCommand, values) {
     case "backup": {
       const backup = await Notes.getBackup();
       if (values.output) {
-        const fs2 = await import("node:fs");
-        fs2.writeFileSync(values.output, JSON.stringify(backup, null, 2));
+        const fs4 = await import("node:fs");
+        fs4.writeFileSync(values.output, JSON.stringify(backup, null, 2));
         output({ status: "backup-written", path: values.output });
       } else {
         output(backup);
@@ -20037,6 +20410,31 @@ async function handleShares(subCommand, values) {
       );
       break;
     }
+    case "create-remote": {
+      if (!values.path) throw new Error("Missing --path");
+      if (!values["remote-user"]) throw new Error("Missing --remote-user");
+      output(
+        await Shares.createRemoteShare({
+          path: values.path,
+          remoteUser: values["remote-user"],
+          permissions: values.permissions,
+          expireDate: values.expire
+        })
+      );
+      break;
+    }
+    case "create-chat": {
+      if (!values.path) throw new Error("Missing --path");
+      if (!values.token) throw new Error("Missing --token");
+      output(
+        await Shares.createChatShare({
+          path: values.path,
+          roomToken: values.token,
+          permissions: values.permissions
+        })
+      );
+      break;
+    }
     case "delete": {
       if (!values.id) throw new Error("Missing --id");
       output(await Shares.delete({ id: values.id }));
@@ -20243,12 +20641,6 @@ async function handleTalk(subCommand, values) {
       output(await Talk.closePoll(values.token, values["poll-id"]));
       break;
     }
-    case "publish-poll": {
-      if (!values.token) throw new Error("Missing --token");
-      if (!values["poll-id"]) throw new Error("Missing --poll-id");
-      output(await Talk.publishPoll(values.token, values["poll-id"]));
-      break;
-    }
     case "get-poll-results": {
       if (!values.token) throw new Error("Missing --token");
       if (!values["poll-id"]) throw new Error("Missing --poll-id");
@@ -20282,6 +20674,101 @@ async function handleTalk(subCommand, values) {
       output(
         await Talk.updateGuestSettings(values.token, buildTalkSettings(values))
       );
+      break;
+    }
+    case "participants": {
+      if (!values.token) throw new Error("Missing --token");
+      output(await Talk.listParticipants(values.token));
+      break;
+    }
+    case "join": {
+      if (!values.token) throw new Error("Missing --token");
+      output(await Talk.joinConversation(values.token));
+      break;
+    }
+    case "leave": {
+      if (!values.token) throw new Error("Missing --token");
+      output(await Talk.leaveConversation(values.token));
+      break;
+    }
+    case "remove-participant": {
+      if (!values.token) throw new Error("Missing --token");
+      if (!values.participant)
+        throw new Error("Missing --participant (attendee ID)");
+      output(
+        await Talk.removeParticipant(
+          values.token,
+          parseInt(values.participant, 10)
+        )
+      );
+      break;
+    }
+    case "promote": {
+      if (!values.token) throw new Error("Missing --token");
+      if (!values.attendee) throw new Error("Missing --attendee (attendee ID)");
+      output(
+        await Talk.promoteParticipant(
+          values.token,
+          parseInt(values.attendee, 10)
+        )
+      );
+      break;
+    }
+    case "demote": {
+      if (!values.token) throw new Error("Missing --token");
+      if (!values.attendee) throw new Error("Missing --attendee (attendee ID)");
+      output(
+        await Talk.demoteParticipant(
+          values.token,
+          parseInt(values.attendee, 10)
+        )
+      );
+      break;
+    }
+    case "set-participant-permissions": {
+      if (!values.token) throw new Error("Missing --token");
+      if (!values.attendee) throw new Error("Missing --attendee (attendee ID)");
+      if (!values.permissions)
+        throw new Error("Missing --permissions (bitmask)");
+      output(
+        await Talk.updateParticipantPermissions(
+          values.token,
+          parseInt(values.attendee, 10),
+          values.method || "set",
+          parseInt(values.permissions, 10)
+        )
+      );
+      break;
+    }
+    case "vote-poll": {
+      if (!values.token) throw new Error("Missing --token");
+      if (!values["poll-id"]) throw new Error("Missing --poll-id");
+      if (!values["option-ids"])
+        throw new Error("Missing --option-ids (comma-separated, e.g. 1,2)");
+      const ids = values["option-ids"].split(",").map((s) => parseInt(s.trim(), 10)).filter((n) => !Number.isNaN(n));
+      output(await Talk.votePoll(values.token, values["poll-id"], ids));
+      break;
+    }
+    case "unvote-poll": {
+      if (!values.token) throw new Error("Missing --token");
+      if (!values["poll-id"]) throw new Error("Missing --poll-id");
+      output(await Talk.unvotePoll(values.token, values["poll-id"]));
+      break;
+    }
+    case "get-avatar": {
+      if (!values.token) throw new Error("Missing --token");
+      output(await Talk.getAvatar(values.token, values.output || null));
+      break;
+    }
+    case "set-avatar": {
+      if (!values.token) throw new Error("Missing --token");
+      if (!values.file) throw new Error("Missing --file (image path)");
+      output(await Talk.setAvatar(values.token, values.file));
+      break;
+    }
+    case "delete-avatar": {
+      if (!values.token) throw new Error("Missing --token");
+      output(await Talk.deleteAvatar(values.token));
       break;
     }
     default:
@@ -20318,6 +20805,7 @@ async function handleContacts(subCommand, values) {
       if (values.url) options.url = values.url;
       if (values.role) options.role = values.role;
       if (values.address) options.address = values.address;
+      if (values.photo) options.photo = values.photo;
       output(await Contacts.create(values.name, values.addressbook, options));
       break;
     }
@@ -20337,7 +20825,19 @@ async function handleContacts(subCommand, values) {
       if (values.url !== void 0) updates.url = values.url;
       if (values.role !== void 0) updates.role = values.role;
       if (values.address !== void 0) updates.address = values.address;
+      if (values.photo !== void 0) updates.photo = values.photo;
       output(await Contacts.update(values.uid, values.addressbook, updates));
+      break;
+    }
+    case "photo": {
+      if (!values.uid) throw new Error("Missing --uid");
+      output(
+        await Contacts.getPhoto(
+          values.uid,
+          values.addressbook,
+          values.output || null
+        )
+      );
       break;
     }
     case "delete": {

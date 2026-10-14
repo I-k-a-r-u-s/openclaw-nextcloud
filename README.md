@@ -7,7 +7,7 @@
 > **Fork notice:** This repository is a maintained fork of [keithvassallomt/openclaw-nextcloud](https://github.com/keithvassallomt/openclaw-nextcloud), extended with substantially broader API coverage. Additions over upstream include:
 >
 > - **Talk** — reactions (add/remove/list), polls (create/get/close/publish/results), conversation & guest settings (public, listable, default-permissions, favorite, notification level, read-only, password), `talk get`, file upload-to-chat
-> - **Shares** — user and group shares (`create-user`, `create-group`) in addition to public links
+> - **Shares** — user, group, remote (federated), and chat shares (`create-user`, `create-group`, `create-remote`, `create-chat`) in addition to public links
 > - **Notes** — category management, per-note history, export backup
 > - **Calendar/Tasks** — calendar color get/set
 > - **Contacts** — extended vCard fields (BDAY, ANNIVERSARY, URL, ROLE, ADR, typed TEL/EMAIL)
@@ -24,7 +24,7 @@ A Node.js CLI tool for interacting with Nextcloud services including notes, file
 - **Calendar** - Manage calendar events via CalDAV, including calendar display color
 - **Tasks** - Create, manage, and complete tasks/todos, including calendar display color
 - **Contacts** - Contact management via CardDAV with extended vCard fields (birthday, anniversary, URL, role, address, typed phone/email)
-- **Shares** - Public link, user, and group shares
+- **Shares** - Public link, user, group, remote (federated), and chat shares
 - **Chat/Conversations** - Manage Talk conversations, messages, reactions, polls, conversation settings, participants, bots, and file sharing into chats
 
 **Note on Call Permissions:** The `--call-permissions` setting was removed as the underlying Nextcloud Talk API endpoint (`/permissions/call`) is no-op since Nextcloud Talk 20. Call permissions must be configured manually in the Nextcloud UI.
@@ -137,7 +137,7 @@ node scripts/nextcloud.js files delete --path "Documents/test.txt"
 
 `files list` and `files search` results include a `fileId` (when the server returns one) and a synthesized `internalLink` like `<NEXTCLOUD_URL>/index.php/f/<fileId>` that opens the file directly in the Nextcloud web UI.
 
-### Shares (links, users, groups)
+### Shares (links, users, groups, remote, chat)
 
 ```bash
 # Create a public link share for a file or folder
@@ -158,11 +158,17 @@ node scripts/nextcloud.js shares create-user --path "/Documents/Reports" --user 
 # Share with a group
 node scripts/nextcloud.js shares create-group --path "/Documents/Reports" --group staff
 
+# Share with a user on a remote (federated) Nextcloud server
+node scripts/nextcloud.js shares create-remote --path "/Documents/Reports" --remote-user alice@othercloud.example
+
+# Share a file into a Talk conversation (auto-posts the share message to the chat)
+node scripts/nextcloud.js shares create-chat --path "/Documents/Reports" --token ABC123
+
 # Delete a share by ID
 node scripts/nextcloud.js shares delete --id 29
 ```
 
-`--permissions read` (default) is read-only; `--permissions edit` grants create/read/update/delete on the shared resource. `--password` and `--expire` are optional (link shares).
+`--permissions read` (default) is read-only; `--permissions edit` grants create/read/update/delete on the shared resource. `--password` and `--expire` are optional (link shares). Remote shares require federation to be enabled on both servers; `--remote-user` is `user@server`.
 
 ### Calendar
 
@@ -235,11 +241,18 @@ node scripts/nextcloud.js contacts create --name "Jane Doe" \
   --address "Main Street|Springfield|CA|90210" \
   --phone "+1234567890" --phone-type work
 
-# Get a specific contact
+# Add a photo (png/jpg/jpeg/gif/webp/bmp) when creating
+node scripts/nextcloud.js contacts create --name "John Doe" --photo ./photo.jpg
+
+# Get a specific contact (reports hasPhoto / photoMime)
 node scripts/nextcloud.js contacts get --uid contact-uid
 
-# Update a contact
+# Update a contact (photo updates replace the old one)
 node scripts/nextcloud.js contacts edit --uid contact-uid --email "newemail@example.com"
+node scripts/nextcloud.js contacts edit --uid contact-uid --photo ./new-photo.jpg
+
+# Download a contact's photo
+node scripts/nextcloud.js contacts photo --uid contact-uid --output john.jpg
 
 # Delete a contact
 node scripts/nextcloud.js contacts delete --uid contact-uid
@@ -268,6 +281,29 @@ node scripts/nextcloud.js talk delete-message --token ABC123 --message-id 1567
 
 # Add a participant to a conversation
 node scripts/nextcloud.js talk add-participant --token ABC123 --user alice
+
+# List participants (exposes each attendee ID used by the commands below)
+node scripts/nextcloud.js talk participants --token ABC123
+
+# Join / leave a conversation yourself
+node scripts/nextcloud.js talk join --token ABC123
+node scripts/nextcloud.js talk leave --token ABC123
+
+# Remove a participant (moderator/owner; attendee ID from `talk participants`)
+node scripts/nextcloud.js talk remove-participant --token ABC123 --participant 42
+
+# Promote / demote a moderator
+node scripts/nextcloud.js talk promote --token ABC123 --attendee 42
+node scripts/nextcloud.js talk demote --token ABC123 --attendee 42
+
+# Set/add/remove a per-attendee permission bitmask (set is the default method)
+node scripts/nextcloud.js talk set-participant-permissions --token ABC123 --attendee 42 --permissions 128
+node scripts/nextcloud.js talk set-participant-permissions --token ABC123 --attendee 42 --permissions 1 --method add
+
+# Conversation avatar (set accepts png/jpg/jpeg)
+node scripts/nextcloud.js talk set-avatar --token ABC123 --file ./logo.png
+node scripts/nextcloud.js talk get-avatar --token ABC123 --output avatar.png
+node scripts/nextcloud.js talk delete-avatar --token ABC123
 
 # Share content into a conversation as a file
 # (uploads to the conversation's Talk/ folder, then posts the share)
@@ -298,14 +334,17 @@ node scripts/nextcloud.js talk list-reactions --token ABC123 --message-id 1567
 # Create a poll (comma-separated options)
 node scripts/nextcloud.js talk create-poll --token ABC123 --question "Lunch?" --options "Pizza,Sushi,Salad"
 
-# Get a poll / view results / close / publish
+# Vote / unvote (option IDs are 1-based positions in the option list)
+node scripts/nextcloud.js talk vote-poll --token ABC123 --poll-id 42 --option-ids 1,2
+node scripts/nextcloud.js talk unvote-poll --token ABC123 --poll-id 42
+
+# Get a poll (includes vote tallies) / view results / close
 node scripts/nextcloud.js talk get-poll --token ABC123 --poll-id 42
 node scripts/nextcloud.js talk get-poll-results --token ABC123 --poll-id 42
 node scripts/nextcloud.js talk close-poll --token ABC123 --poll-id 42
-node scripts/nextcloud.js talk publish-poll --token ABC123 --poll-id 42
 ```
 
-**Note:** voting on polls is not exposed via the CLI — use the Nextcloud UI for that.
+**Note:** polls are created with `resultMode` 0 (results visible to participants once they've voted) and `maxVotes` 1 (single choice). There is no separate "publish" endpoint in the Talk API — `get-poll` already returns the tally.
 
 ### Conversation Settings
 
@@ -342,7 +381,7 @@ node scripts/nextcloud.js talk update-settings --token ABC123 --default-permissi
 | `listable` | `0`, `1`, `2` | Participants only, Regular users only, Everyone |
 | `default-permissions` | Integer | Combined permission flags (e.g., `128` for chat messages) |
 
-**Bot Setup Required:** For bot features, install a bot on your Nextcloud server first (requires admin SSH access):
+**Bot Setup Required:** The Talk API exposes only listing, enabling, and disabling bots — registration, editing, and removal have no OCS endpoints and must be done by an admin on the server terminal with `occ talk:bot:install` / `occ talk:bot:remove`:
 
 ```bash
 ./occ talk:bot:install \
