@@ -20055,7 +20055,7 @@ function buildTalkSettings(values) {
   if (values["read-only"] !== void 0)
     settings.readOnly = values["read-only"] === "1" || values["read-only"] === "true";
   if (values.listable !== void 0)
-    settings.listable = values.listable === "1" || values.listable === "true";
+    settings.listable = parseInt(values.listable, 10);
   if (values.favorite !== void 0)
     settings.favorite = values.favorite === "1" || values.favorite === "true";
   if (values.public !== void 0)

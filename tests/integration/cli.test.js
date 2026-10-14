@@ -18,7 +18,7 @@ test("CLI Integration Tests", { skip: !hasCredentials }, async () => {
   let testRoomToken = null;
 
   // Create a test room first
-  const createRoomCmd = `node ${scriptPath} talk create "CLI Test Room ${timestamp}" --type group`;
+  const createRoomCmd = `node ${scriptPath} talk create --name "CLI Test Room ${timestamp}" --type group`;
   const createResult = JSON.parse(execSync(createRoomCmd).toString());
   assert.ok(createResult.status === "success");
   testRoomToken = createResult.data.token;

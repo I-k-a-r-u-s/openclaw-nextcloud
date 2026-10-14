@@ -446,7 +446,9 @@ function buildTalkSettings(values) {
     settings.readOnly =
       values["read-only"] === "1" || values["read-only"] === "true";
   if (values.listable !== undefined)
-    settings.listable = values.listable === "1" || values.listable === "true";
+    // Talk expects a numeric scope (0=none, 1=regular users, 2=everyone);
+    // do not coerce to boolean or scope 2 would collapse to 0.
+    settings.listable = parseInt(values.listable, 10);
   if (values.favorite !== undefined)
     settings.favorite = values.favorite === "1" || values.favorite === "true";
   if (values.public !== undefined)
