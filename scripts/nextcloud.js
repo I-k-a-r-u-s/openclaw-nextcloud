@@ -21425,7 +21425,9 @@ async function handleDeck(subCommand, values) {
           title: values.title,
           content: values.content,
           due: values.due,
-          order: values.order
+          order: values.order,
+          type: values.type,
+          color: values.color
         })
       );
       break;

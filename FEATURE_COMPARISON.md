@@ -148,8 +148,8 @@ The external server exposes only 12 Talk tools (`talk_list_conversations`, `talk
 | Card comments (full CRUD) | ✅ | ❌ |
 | Card attachments — attach files & notes, list, delete | ✅ | ❌ |
 | Dependent cards (card relations) | ✅ | ❌ |
-| Card reordering within stack | ✅ | ❌ |
-| Board overview (all stacks + cards in one call) | ✅ | ❌ (`deck board` exists but overview tool is richer) |
+| Card reordering within stack | ✅ | ✅ (`deck move --to-stack <same-stack> --order n`) |
+| Board overview (all stacks + cards in one call) | ✅ | ✅ (`deck stacks` returns stacks with nested cards; `deck board` for board detail) |
 | MCP resources for boards / stacks / cards / labels | ✅ | n/a |
 
 ### 3.7 Notes extras

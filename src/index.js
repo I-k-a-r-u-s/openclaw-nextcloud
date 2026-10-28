@@ -959,6 +959,8 @@ async function handleDeck(subCommand, values) {
           content: values.content,
           due: values.due,
           order: values.order,
+          type: values.type,
+          color: values.color,
         }),
       );
       break;
