@@ -23,7 +23,8 @@ A Node.js CLI tool for interacting with Nextcloud services including notes, file
 - **Files** - Upload, download, list, search, and delete files via WebDAV
 - **Calendar** - Manage calendar events via CalDAV, including calendar display color
 - **Tasks** - Create, manage, and complete tasks/todos, including calendar display color
-- **Contacts** - Contact management via CardDAV with extended vCard fields (birthday, anniversary, URL, role, address, typed phone/email)
+- **Contacts** - Contact management via CardDAV with extended vCard fields (birthday, anniversary, URL, role, address, typed phone/email), plus contact photos
+- **Deck** - Kanban boards, stacks, and cards: create/edit/move/complete/archive cards, labels, user assignments, due dates
 - **Shares** - Public link, user, group, remote (federated), and chat shares
 - **Chat/Conversations** - Manage Talk conversations, messages, reactions, polls, conversation settings, participants, bots, and file sharing into chats
 
@@ -258,6 +259,45 @@ node scripts/nextcloud.js contacts photo --uid contact-uid --output john.jpg
 node scripts/nextcloud.js contacts delete --uid contact-uid
 ```
 
+### Deck (kanban boards)
+
+```bash
+# Boards
+node scripts/nextcloud.js deck boards
+node scripts/nextcloud.js deck board --board "Project Alpha"
+node scripts/nextcloud.js deck create-board --title "Project Alpha" --color "#e06060"
+node scripts/nextcloud.js deck delete-board --board "Project Alpha"
+node scripts/nextcloud.js deck undo-delete-board --board 42   # numeric id, trashed boards are not listed
+
+# Stacks (columns)
+node scripts/nextcloud.js deck stacks --board "Project Alpha"
+node scripts/nextcloud.js deck create-stack --board "Project Alpha" --title "To Do"
+node scripts/nextcloud.js deck delete-stack --board "Project Alpha" --stack "To Do"
+
+# Cards
+node scripts/nextcloud.js deck list --board "Project Alpha" --stack "To Do"
+node scripts/nextcloud.js deck create --board "Project Alpha" --stack "To Do" \
+  --title "Write the report" --content "markdown ok" --due 2026-11-05
+node scripts/nextcloud.js deck edit --board "Project Alpha" --card 123 --title "Write the final report"
+node scripts/nextcloud.js deck edit --board "Project Alpha" --card 123 --due none   # clear due date
+node scripts/nextcloud.js deck move --board "Project Alpha" --card 123 --to-stack "In Progress"
+node scripts/nextcloud.js deck complete --card 123
+node scripts/nextcloud.js deck archive --card 123
+node scripts/nextcloud.js deck delete --board "Project Alpha" --card 123
+
+# Labels & assignments
+node scripts/nextcloud.js deck create-label --board "Project Alpha" --title urgent --color ff0000
+node scripts/nextcloud.js deck assign-label --board "Project Alpha" --card 123 --label urgent
+node scripts/nextcloud.js deck assign --board "Project Alpha" --card 123 --user alice
+node scripts/nextcloud.js deck unassign --board "Project Alpha" --card 123 --user alice
+```
+
+`--board`, `--stack`, and `--label` accept a numeric id or a title (exact
+case-insensitive, else unique substring); misses return a structured error
+listing the available options. `--content` is Markdown. Deck deletions are
+soft deletes (board/card trash); `deck delete-board` replies with the numeric
+id for `undo-delete-board`. Cards report `overdue` and `done` automatically.
+
 ### Chat/Conversations (Talk API)
 
 ```bash
@@ -427,6 +467,7 @@ This tool uses the following Nextcloud APIs:
 | Service | Protocol | Endpoint |
 |---------|----------|----------|
 | Notes | REST | `/index.php/apps/notes/api/v1/notes` |
+| Deck | REST | `/index.php/apps/deck/api/v1.0/` |
 | Files | WebDAV | `/remote.php/dav/files/` |
 | Calendar/Tasks | CalDAV | `/remote.php/dav/calendars/` |
 | Contacts | CardDAV | `/remote.php/dav/addressbooks/` |

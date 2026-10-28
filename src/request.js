@@ -14,7 +14,11 @@ export async function request(endpoint, options = {}) {
     ...options.headers,
   };
 
-  if (endpoint.startsWith("/ocs/") || endpoint.includes("/spreed/api/")) {
+  if (
+    endpoint.startsWith("/ocs/") ||
+    endpoint.includes("/spreed/api/") ||
+    endpoint.startsWith("/index.php/apps/deck")
+  ) {
     headers["OCS-APIRequest"] = "true";
   }
 

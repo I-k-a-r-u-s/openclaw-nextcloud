@@ -8,6 +8,7 @@ import { CalDAV } from "./caldav.js";
 import { Shares } from "./shares.js";
 import { Talk } from "./talk.js";
 import { Contacts } from "./contacts.js";
+import { Deck } from "./deck.js";
 import { output, errorOutput } from "./utils.js";
 import { validateConfig } from "./config.js";
 
@@ -77,6 +78,14 @@ const COMMON_OPTIONS = {
   method: { type: "string" },
   "option-ids": { type: "string" },
   "remote-user": { type: "string" },
+  board: { type: "string" },
+  stack: { type: "string" },
+  card: { type: "string" },
+  "to-stack": { type: "string" },
+  label: { type: "string" },
+  order: { type: "string" },
+  details: { type: "string" },
+  archived: { type: "string" },
 };
 
 async function main() {
@@ -89,7 +98,7 @@ async function main() {
 
   if (!command) {
     console.log(
-      "Usage: node index.js <notes|files|calendar|calendars|tasks|talk|contacts|addressbooks|shares> <subcommand> [options]",
+      "Usage: node index.js <notes|files|calendar|calendars|tasks|talk|contacts|addressbooks|shares|deck> <subcommand> [options]",
     );
     return;
   }
@@ -136,9 +145,12 @@ async function main() {
       case "contacts":
         await handleContacts(subCommand, values);
         break;
+      case "deck":
+        await handleDeck(subCommand, values);
+        break;
       default:
         console.log(
-          "Usage: node index.js <notes|files|calendar|calendars|tasks|talk|contacts|addressbooks|shares> <subcommand> [options]",
+          "Usage: node index.js <notes|files|calendar|calendars|tasks|talk|contacts|addressbooks|shares|deck> <subcommand> [options]",
         );
     }
   } catch (err) {
@@ -882,6 +894,134 @@ async function handleContacts(subCommand, values) {
     }
     default:
       throw new Error("Unknown contacts command");
+  }
+}
+
+async function handleDeck(subCommand, values) {
+  const boolish = (v, dflt = false) =>
+    v === undefined ? dflt : v === "1" || v === "true";
+  switch (subCommand) {
+    case "boards":
+      output(await Deck.listBoards({ details: boolish(values.details) }));
+      break;
+    case "board":
+      output(await Deck.getBoard(values.board));
+      break;
+    case "create-board":
+      output(await Deck.createBoard(values.title, values.color));
+      break;
+    case "update-board":
+      output(
+        await Deck.updateBoard(values.board, {
+          title: values.title,
+          color: values.color,
+          archived: values.archived,
+        }),
+      );
+      break;
+    case "delete-board":
+      output(await Deck.deleteBoard(values.board));
+      break;
+    case "undo-delete-board":
+      output(await Deck.undoDeleteBoard(values.board));
+      break;
+
+    case "stacks":
+      output(await Deck.listStacks(values.board));
+      break;
+    case "create-stack":
+      output(await Deck.createStack(values.board, values.title, values.order));
+      break;
+    case "delete-stack":
+      output(await Deck.deleteStack(values.board, values.stack));
+      break;
+
+    case "list":
+      output(await Deck.listCards(values.board, values.stack));
+      break;
+    case "card":
+      output(await Deck.getCard(values.board, values.card));
+      break;
+    case "create":
+      output(
+        await Deck.createCard(values.board, values.stack, {
+          title: values.title,
+          content: values.content,
+          due: values.due,
+          order: values.order,
+        }),
+      );
+      break;
+    case "edit":
+      output(
+        await Deck.updateCard(values.board, values.card, {
+          title: values.title,
+          content: values.content,
+          due: values.due,
+          order: values.order,
+        }),
+      );
+      break;
+    case "move":
+      if (!values["to-stack"])
+        throw new Error("Missing --to-stack (id or title of target stack)");
+      output(await Deck.moveCard(values.board, values.card, values["to-stack"], values.order));
+      break;
+    case "complete":
+      output(await Deck.completeCard(values.card));
+      break;
+    case "uncomplete":
+      output(await Deck.uncompleteCard(values.card));
+      break;
+    case "archive":
+      output(await Deck.archiveCard(values.card));
+      break;
+    case "unarchive":
+      output(await Deck.unarchiveCard(values.card));
+      break;
+    case "delete":
+      output(await Deck.deleteCard(values.board, values.card));
+      break;
+
+    case "labels":
+      output(await Deck.listLabels(values.board));
+      break;
+    case "create-label":
+      output(await Deck.createLabel(values.board, values.title, values.color));
+      break;
+    case "update-label":
+      output(
+        await Deck.updateLabel(values.board, values.label, {
+          title: values.title,
+          color: values.color,
+        }),
+      );
+      break;
+    case "delete-label":
+      output(await Deck.deleteLabel(values.board, values.label));
+      break;
+    case "assign-label":
+      if (!values.label) throw new Error("Missing --label (id or title)");
+      output(
+        await Deck.assignLabel(values.board, values.card, values.label),
+      );
+      break;
+    case "unassign-label":
+      if (!values.label) throw new Error("Missing --label (id or title)");
+      output(
+        await Deck.unassignLabel(values.board, values.card, values.label),
+      );
+      break;
+
+    case "assign":
+      output(await Deck.assignUser(values.board, values.card, values.user));
+      break;
+    case "unassign":
+      output(await Deck.unassignUser(values.board, values.card, values.user));
+      break;
+
+    default:
+      throw new Error(`Unknown deck subcommand: ${subCommand}`);
   }
 }
 

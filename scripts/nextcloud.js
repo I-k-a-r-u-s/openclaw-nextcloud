@@ -17676,7 +17676,7 @@ async function request(endpoint, options = {}) {
     "User-Agent": "OpenClaw-Nextcloud-Skill",
     ...options.headers
   };
-  if (endpoint.startsWith("/ocs/") || endpoint.includes("/spreed/api/")) {
+  if (endpoint.startsWith("/ocs/") || endpoint.includes("/spreed/api/") || endpoint.startsWith("/index.php/apps/deck")) {
     headers["OCS-APIRequest"] = "true";
   }
   try {
@@ -20000,6 +20000,513 @@ END:VCARD`
   }
 };
 
+// src/deck.js
+var API = "/index.php/apps/deck/api/v1.0";
+var INTERNAL = "/index.php/apps/deck";
+function normalizeColor(color, fallback = "0082c9") {
+  if (color === void 0 || color === null || color === "") return fallback;
+  const hex = String(color).trim().replace(/^#/, "");
+  if (!/^[0-9a-fA-F]{6}$/.test(hex)) {
+    throw new Error(
+      `Invalid color '${color}'. Use a 6-digit hex value like ff0000 or #ff0000.`
+    );
+  }
+  return hex.toLowerCase();
+}
+function toDeckIso(value) {
+  if (value === void 0) return void 0;
+  if (["", "none", "null", "clear"].includes(String(value).toLowerCase()))
+    return null;
+  return new Date(parseDateInput(value)).toISOString();
+}
+function resolveEntity(items, ref, kind) {
+  const asNum = /^\d+$/.test(String(ref)) ? parseInt(ref, 10) : null;
+  if (asNum !== null) {
+    const byId = items.find((i) => i.id === asNum);
+    if (byId) return byId;
+  } else if (ref !== void 0 && ref !== null && ref !== "") {
+    const lower = String(ref).toLowerCase();
+    const exact = items.find((i) => (i.title || "").toLowerCase() === lower);
+    if (exact) return exact;
+    const partial = items.filter(
+      (i) => (i.title || "").toLowerCase().includes(lower)
+    );
+    if (partial.length === 1) return partial[0];
+    if (partial.length > 1) {
+      throw new Error(
+        `'${ref}' matches multiple ${kind}s: ${partial.map((p) => `${p.id} "${p.title}"`).join(", ")}`
+      );
+    }
+  }
+  const available = items.map((i) => `${i.id} "${i.title}"`).join(", ") || "(none)";
+  throw new Error(
+    `${kind} '${ref}' not found. Available: ${available}`
+  );
+}
+function cardSummary(card) {
+  return {
+    id: card.id,
+    title: card.title,
+    stackId: card.stackId,
+    order: card.order,
+    duedate: card.duedate,
+    overdue: card.overdue,
+    done: card.done,
+    archived: card.archived,
+    labels: (card.labels || []).map((l) => l.title),
+    assignedUsers: (card.assignedUsers || []).map(
+      (u) => u.participant?.uid ?? u.uid ?? u
+    )
+  };
+}
+var Deck = {
+  // ---- Boards ----
+  async listBoards({ details = false } = {}) {
+    const boards = await request(`${API}/boards?details=${details ? "true" : "false"}`, {
+      headers: { Accept: "application/json" }
+    });
+    const live = boards.filter((b) => !b.deletedAt);
+    if (details) return live;
+    return live.map((b) => ({
+      id: b.id,
+      title: b.title,
+      color: b.color,
+      owner: b.owner?.uid ?? b.owner,
+      archived: b.archived,
+      labels: (b.labels || []).length,
+      shared: b.shared
+    }));
+  },
+  async _allBoardSummaries() {
+    const boards = await request(`${API}/boards`, {
+      headers: { Accept: "application/json" }
+    });
+    return boards.filter((b) => !b.deletedAt);
+  },
+  async resolveBoard(ref) {
+    if (ref === void 0 || ref === null || ref === "")
+      throw new Error("A --board (id or title) is required.");
+    const boards = await this._allBoardSummaries();
+    const board = resolveEntity(boards, ref, "Board");
+    return board;
+  },
+  async getBoard(ref) {
+    const board = await this.resolveBoard(ref);
+    return await request(`${API}/boards/${board.id}`, {
+      headers: { Accept: "application/json" }
+    });
+  },
+  async createBoard(title, color) {
+    if (!title || !title.trim()) throw new Error("--title is required.");
+    return await request(
+      `${API}/boards`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json"
+        },
+        body: JSON.stringify({ title: title.trim(), color: normalizeColor(color) })
+      }
+    );
+  },
+  // Deck's PUT is a full update (title+color required): merge with current.
+  async updateBoard(ref, { title, color, archived } = {}) {
+    const board = await this.resolveBoard(ref);
+    const current = await request(`${API}/boards/${board.id}`, {
+      headers: { Accept: "application/json" }
+    });
+    return await request(`${API}/boards/${board.id}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json"
+      },
+      body: JSON.stringify({
+        title: title !== void 0 ? title : current.title,
+        color: color !== void 0 ? normalizeColor(color) : current.color,
+        archived: archived !== void 0 ? archived === "1" || archived === "true" || archived === true : current.archived
+      })
+    });
+  },
+  async deleteBoard(ref) {
+    const board = await this.resolveBoard(ref);
+    const deleted = await request(`${API}/boards/${board.id}`, {
+      method: "DELETE",
+      headers: { Accept: "application/json" }
+    });
+    return {
+      id: deleted.id,
+      title: deleted.title,
+      status: "deleted",
+      note: "Soft delete \u2014 recoverable via deck undo-delete-board while in trash."
+    };
+  },
+  async undoDeleteBoard(ref) {
+    if (!/^\d+$/.test(String(ref ?? "")))
+      throw new Error(
+        "undo-delete-board needs the numeric board id (trashed boards are not listed)."
+      );
+    const restored = await request(`${API}/boards/${ref}/undo_delete`, {
+      method: "POST",
+      headers: { Accept: "application/json" }
+    });
+    return { id: restored.id, title: restored.title, status: "restored" };
+  },
+  // ---- Stacks ----
+  async listStacks(ref) {
+    const board = await this.resolveBoard(ref);
+    return await request(`${API}/boards/${board.id}/stacks`, {
+      headers: { Accept: "application/json" }
+    });
+  },
+  async _stacksRaw(boardId) {
+    return await request(`${API}/boards/${boardId}/stacks`, {
+      headers: { Accept: "application/json" }
+    });
+  },
+  async createStack(ref, title, order = 999) {
+    const board = await this.resolveBoard(ref);
+    if (!title || !title.trim()) throw new Error("--title is required.");
+    return await request(`${API}/boards/${board.id}/stacks`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json"
+      },
+      body: JSON.stringify({ title: title.trim(), order: parseInt(order, 10) })
+    });
+  },
+  async deleteStack(ref, stackRef) {
+    const board = await this.resolveBoard(ref);
+    const stacks = await this._stacksRaw(board.id);
+    const stack = resolveEntity(stacks, stackRef, "Stack");
+    const deleted = await request(`${API}/boards/${board.id}/stacks/${stack.id}`, {
+      method: "DELETE",
+      headers: { Accept: "application/json" }
+    });
+    return { id: deleted.id, title: deleted.title, status: "deleted" };
+  },
+  // ---- Cards ----
+  async listCards(ref, stackRef = null) {
+    const board = await this.resolveBoard(ref);
+    let stacks = await this._stacksRaw(board.id);
+    if (stackRef !== null && stackRef !== void 0 && stackRef !== "") {
+      const stack = resolveEntity(stacks, stackRef, "Stack");
+      stacks = [stack];
+    }
+    return stacks.map((s) => ({
+      id: s.id,
+      title: s.title,
+      order: s.order,
+      cards: (s.cards || []).filter((c) => !c.archived).map(cardSummary)
+    }));
+  },
+  // Locate a card across the board's stacks (card ids are board-global unique).
+  async _findCard(ref, cardId) {
+    const board = await this.resolveBoard(ref);
+    if (!cardId) throw new Error("A --card (id) is required.");
+    const id = parseInt(cardId, 10);
+    const stacks = await this._stacksRaw(board.id);
+    for (const s of stacks) {
+      const card = (s.cards || []).find((c) => c.id === id);
+      if (card) return { board, stack: s, card };
+      const archived = (s.archivedCards || []).find((c) => c.id === id);
+      if (archived) return { board, stack: s, card: archived };
+    }
+    throw new Error(
+      `Card ${cardId} not found in board ${board.id} "${board.title}". Use deck list --board ${board.id}.`
+    );
+  },
+  async getCard(ref, cardId) {
+    const { board, stack, card } = await this._findCard(ref, cardId);
+    const full = await request(
+      `${API}/boards/${board.id}/stacks/${stack.id}/cards/${card.id}`,
+      { headers: { Accept: "application/json" } }
+    );
+    return full;
+  },
+  async createCard(ref, stackRef, { title, content, due, order } = {}) {
+    const board = await this.resolveBoard(ref);
+    if (!title || !title.trim()) throw new Error("--title is required.");
+    const stacks = await this._stacksRaw(board.id);
+    let stack;
+    if (stackRef === void 0 || stackRef === null || stackRef === "") {
+      if (!stacks.length)
+        throw new Error(
+          `Board ${board.id} "${board.title}" has no stacks. Create one first: deck create-stack --board ${board.id} --title "To Do"`
+        );
+      stack = stacks[0];
+    } else {
+      stack = resolveEntity(stacks, stackRef, "Stack");
+    }
+    const body = {
+      title: title.trim(),
+      type: "plain",
+      order: order !== void 0 ? parseInt(order, 10) : 999
+    };
+    if (content !== void 0) body.description = content;
+    const duedate = toDeckIso(due);
+    if (duedate !== void 0) body.duedate = duedate;
+    const card = await request(
+      `${API}/boards/${board.id}/stacks/${stack.id}/cards`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json"
+        },
+        body: JSON.stringify(body)
+      }
+    );
+    return cardSummary(card);
+  },
+  // Deck's card PUT resets any omitted optional field (description -> "",
+  // duedate -> null) and requires title/type/owner, so send a full merge of
+  // the current card state plus the requested changes.
+  async updateCard(ref, cardId, { title, content, due, order, type, color } = {}) {
+    const { board, stack, card } = await this._findCard(ref, cardId);
+    if ([title, content, due, order, type, color].every((v) => v === void 0)) {
+      throw new Error(
+        "Nothing to update. Provide --title, --content, --due, --order, --type or --color."
+      );
+    }
+    const body = {
+      title: title !== void 0 ? title : card.title,
+      type: type !== void 0 ? type : card.type || "plain",
+      owner: card.owner?.uid ?? card.owner ?? void 0,
+      description: content !== void 0 ? content : card.description || "",
+      order: order !== void 0 ? parseInt(order, 10) : card.order,
+      duedate: card.duedate,
+      startdate: card.startdate ?? null
+    };
+    const duedate = toDeckIso(due);
+    if (duedate !== void 0) body.duedate = duedate;
+    if (color !== void 0) body.color = normalizeColor(color, card.color);
+    const updated = await request(
+      `${API}/boards/${board.id}/stacks/${stack.id}/cards/${card.id}`,
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json"
+        },
+        body: JSON.stringify(body)
+      }
+    );
+    return cardSummary(updated);
+  },
+  // Deck's action endpoints (reorder/assign/label) answer with stale card
+  // data (relations/stack not refreshed); always re-read for truthful output.
+  async _refreshCard(boardId, stackId, cardId) {
+    const full = await request(
+      `${API}/boards/${boardId}/stacks/${stackId}/cards/${cardId}`,
+      { headers: { Accept: "application/json" } }
+    );
+    return cardSummary(full);
+  },
+  async moveCard(ref, cardId, toStackRef, order) {
+    const { board, stack, card } = await this._findCard(ref, cardId);
+    const stacks = await this._stacksRaw(board.id);
+    const target = resolveEntity(stacks, toStackRef, "Stack");
+    if (target.id === stack.id && order === void 0) {
+      return cardSummary(card);
+    }
+    await request(`${INTERNAL}/cards/${card.id}/reorder`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json"
+      },
+      body: JSON.stringify({
+        stackId: target.id,
+        order: order !== void 0 ? parseInt(order, 10) : card.order
+      })
+    });
+    return await this._refreshCard(board.id, target.id, card.id);
+  },
+  async completeCard(cardId) {
+    if (!cardId) throw new Error("A --card (id) is required.");
+    const card = await request(`${INTERNAL}/cards/${cardId}/done`, {
+      method: "PUT",
+      headers: { Accept: "application/json" }
+    });
+    return cardSummary(card);
+  },
+  async uncompleteCard(cardId) {
+    if (!cardId) throw new Error("A --card (id) is required.");
+    const card = await request(`${INTERNAL}/cards/${cardId}/undone`, {
+      method: "PUT",
+      headers: { Accept: "application/json" }
+    });
+    return cardSummary(card);
+  },
+  // archive/unarchive use the internal flat routes: archived cards are not
+  // listed under a stack's `cards`, so stack-path resolution would fail.
+  async archiveCard(cardId) {
+    if (!cardId) throw new Error("A --card (id) is required.");
+    const card = await request(`${INTERNAL}/cards/${cardId}/archive`, {
+      method: "PUT",
+      headers: { Accept: "application/json" }
+    });
+    return cardSummary(card);
+  },
+  async unarchiveCard(cardId) {
+    if (!cardId) throw new Error("A --card (id) is required.");
+    const card = await request(`${INTERNAL}/cards/${cardId}/unarchive`, {
+      method: "PUT",
+      headers: { Accept: "application/json" }
+    });
+    return cardSummary(card);
+  },
+  async deleteCard(ref, cardId) {
+    const { board, stack, card } = await this._findCard(ref, cardId);
+    await request(
+      `${API}/boards/${board.id}/stacks/${stack.id}/cards/${card.id}`,
+      { method: "DELETE", headers: { Accept: "application/json" } }
+    );
+    return {
+      id: card.id,
+      title: card.title,
+      status: "deleted",
+      note: "Soft delete \u2014 the card moves to the board trash."
+    };
+  },
+  // ---- Labels ----
+  async listLabels(ref) {
+    const board = await this.resolveBoard(ref);
+    const full = await request(`${API}/boards/${board.id}`, {
+      headers: { Accept: "application/json" }
+    });
+    return (full.labels || []).map((l) => ({
+      id: l.id,
+      title: l.title,
+      color: l.color
+    }));
+  },
+  async createLabel(ref, title, color) {
+    const board = await this.resolveBoard(ref);
+    if (!title || !title.trim()) throw new Error("--title is required.");
+    return await request(`${API}/boards/${board.id}/labels`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json"
+      },
+      body: JSON.stringify({ title: title.trim(), color: normalizeColor(color) })
+    });
+  },
+  async updateLabel(ref, labelId, { title, color } = {}) {
+    const board = await this.resolveBoard(ref);
+    const labels = await this.listLabels(board.id);
+    const label = labels.find((l) => l.id === parseInt(labelId, 10));
+    if (!label)
+      throw new Error(
+        `Label ${labelId} not found. Available: ${labels.map((l) => `${l.id} "${l.title}"`).join(", ") || "(none)"}`
+      );
+    if (title === void 0 && color === void 0)
+      throw new Error("Nothing to update. Provide --title or --color.");
+    return await request(`${API}/boards/${board.id}/labels/${label.id}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json"
+      },
+      body: JSON.stringify({
+        title: title !== void 0 ? title : label.title,
+        color: color !== void 0 ? normalizeColor(color) : label.color
+      })
+    });
+  },
+  async deleteLabel(ref, labelId) {
+    const board = await this.resolveBoard(ref);
+    const labels = await this.listLabels(board.id);
+    const label = labels.find((l) => l.id === parseInt(labelId, 10));
+    if (!label)
+      throw new Error(`Label ${labelId} not found in board ${board.id}.`);
+    await request(`${API}/boards/${board.id}/labels/${label.id}`, {
+      method: "DELETE",
+      headers: { Accept: "application/json" }
+    });
+    return { id: label.id, title: label.title, status: "deleted" };
+  },
+  async _resolveLabelId(boardId, ref) {
+    const labels = await this.listLabels(boardId);
+    const label = resolveEntity(labels, ref, "Label");
+    return label.id;
+  },
+  async assignLabel(ref, cardId, labelRef) {
+    const { board, stack, card } = await this._findCard(ref, cardId);
+    const labelId = await this._resolveLabelId(board.id, labelRef);
+    await request(
+      `${API}/boards/${board.id}/stacks/${stack.id}/cards/${card.id}/assignLabel`,
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json"
+        },
+        body: JSON.stringify({ labelId })
+      }
+    );
+    return await this._refreshCard(board.id, stack.id, card.id);
+  },
+  async unassignLabel(ref, cardId, labelRef) {
+    const { board, stack, card } = await this._findCard(ref, cardId);
+    const labelId = await this._resolveLabelId(board.id, labelRef);
+    await request(
+      `${API}/boards/${board.id}/stacks/${stack.id}/cards/${card.id}/removeLabel`,
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json"
+        },
+        body: JSON.stringify({ labelId })
+      }
+    );
+    return await this._refreshCard(board.id, stack.id, card.id);
+  },
+  // ---- Assignments ----
+  async assignUser(ref, cardId, userId) {
+    const { board, stack, card } = await this._findCard(ref, cardId);
+    if (!userId) throw new Error("--user is required.");
+    await request(
+      `${API}/boards/${board.id}/stacks/${stack.id}/cards/${card.id}/assignUser`,
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json"
+        },
+        body: JSON.stringify({ userId, type: 0 })
+      }
+    );
+    return await this._refreshCard(board.id, stack.id, card.id);
+  },
+  async unassignUser(ref, cardId, userId) {
+    const { board, stack, card } = await this._findCard(ref, cardId);
+    if (!userId) throw new Error("--user is required.");
+    await request(
+      `${API}/boards/${board.id}/stacks/${stack.id}/cards/${card.id}/unassignUser`,
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json"
+        },
+        body: JSON.stringify({ userId, type: 0 })
+      }
+    );
+    return await this._refreshCard(board.id, stack.id, card.id);
+  },
+  // Pure helpers (exposed for unit tests, like Contacts._parseVCard).
+  _normalizeColor: normalizeColor,
+  _toDeckIso: toDeckIso,
+  _resolveEntity: resolveEntity,
+  _cardSummary: cardSummary
+};
+
 // src/index.js
 var COMMON_OPTIONS = {
   id: { type: "string" },
@@ -20066,7 +20573,15 @@ var COMMON_OPTIONS = {
   attendee: { type: "string" },
   method: { type: "string" },
   "option-ids": { type: "string" },
-  "remote-user": { type: "string" }
+  "remote-user": { type: "string" },
+  board: { type: "string" },
+  stack: { type: "string" },
+  card: { type: "string" },
+  "to-stack": { type: "string" },
+  label: { type: "string" },
+  order: { type: "string" },
+  details: { type: "string" },
+  archived: { type: "string" }
 };
 async function main() {
   validateConfig();
@@ -20076,7 +20591,7 @@ async function main() {
   const flagArgs = args.slice(2);
   if (!command) {
     console.log(
-      "Usage: node index.js <notes|files|calendar|calendars|tasks|talk|contacts|addressbooks|shares> <subcommand> [options]"
+      "Usage: node index.js <notes|files|calendar|calendars|tasks|talk|contacts|addressbooks|shares|deck> <subcommand> [options]"
     );
     return;
   }
@@ -20121,9 +20636,12 @@ async function main() {
       case "contacts":
         await handleContacts(subCommand, values);
         break;
+      case "deck":
+        await handleDeck(subCommand, values);
+        break;
       default:
         console.log(
-          "Usage: node index.js <notes|files|calendar|calendars|tasks|talk|contacts|addressbooks|shares> <subcommand> [options]"
+          "Usage: node index.js <notes|files|calendar|calendars|tasks|talk|contacts|addressbooks|shares|deck> <subcommand> [options]"
         );
     }
   } catch (err) {
@@ -20847,6 +21365,127 @@ async function handleContacts(subCommand, values) {
     }
     default:
       throw new Error("Unknown contacts command");
+  }
+}
+async function handleDeck(subCommand, values) {
+  const boolish = (v, dflt = false) => v === void 0 ? dflt : v === "1" || v === "true";
+  switch (subCommand) {
+    case "boards":
+      output(await Deck.listBoards({ details: boolish(values.details) }));
+      break;
+    case "board":
+      output(await Deck.getBoard(values.board));
+      break;
+    case "create-board":
+      output(await Deck.createBoard(values.title, values.color));
+      break;
+    case "update-board":
+      output(
+        await Deck.updateBoard(values.board, {
+          title: values.title,
+          color: values.color,
+          archived: values.archived
+        })
+      );
+      break;
+    case "delete-board":
+      output(await Deck.deleteBoard(values.board));
+      break;
+    case "undo-delete-board":
+      output(await Deck.undoDeleteBoard(values.board));
+      break;
+    case "stacks":
+      output(await Deck.listStacks(values.board));
+      break;
+    case "create-stack":
+      output(await Deck.createStack(values.board, values.title, values.order));
+      break;
+    case "delete-stack":
+      output(await Deck.deleteStack(values.board, values.stack));
+      break;
+    case "list":
+      output(await Deck.listCards(values.board, values.stack));
+      break;
+    case "card":
+      output(await Deck.getCard(values.board, values.card));
+      break;
+    case "create":
+      output(
+        await Deck.createCard(values.board, values.stack, {
+          title: values.title,
+          content: values.content,
+          due: values.due,
+          order: values.order
+        })
+      );
+      break;
+    case "edit":
+      output(
+        await Deck.updateCard(values.board, values.card, {
+          title: values.title,
+          content: values.content,
+          due: values.due,
+          order: values.order
+        })
+      );
+      break;
+    case "move":
+      if (!values["to-stack"])
+        throw new Error("Missing --to-stack (id or title of target stack)");
+      output(await Deck.moveCard(values.board, values.card, values["to-stack"], values.order));
+      break;
+    case "complete":
+      output(await Deck.completeCard(values.card));
+      break;
+    case "uncomplete":
+      output(await Deck.uncompleteCard(values.card));
+      break;
+    case "archive":
+      output(await Deck.archiveCard(values.card));
+      break;
+    case "unarchive":
+      output(await Deck.unarchiveCard(values.card));
+      break;
+    case "delete":
+      output(await Deck.deleteCard(values.board, values.card));
+      break;
+    case "labels":
+      output(await Deck.listLabels(values.board));
+      break;
+    case "create-label":
+      output(await Deck.createLabel(values.board, values.title, values.color));
+      break;
+    case "update-label":
+      output(
+        await Deck.updateLabel(values.board, values.label, {
+          title: values.title,
+          color: values.color
+        })
+      );
+      break;
+    case "delete-label":
+      output(await Deck.deleteLabel(values.board, values.label));
+      break;
+    case "assign-label":
+      if (!values.label) throw new Error("Missing --label (id or title)");
+      output(
+        await Deck.assignLabel(values.board, values.card, values.label)
+      );
+      break;
+    case "unassign-label":
+      if (!values.label) throw new Error("Missing --label (id or title)");
+      output(
+        await Deck.unassignLabel(values.board, values.card, values.label)
+      );
+      break;
+    case "assign":
+      output(await Deck.assignUser(values.board, values.card, values.user));
+      break;
+    case "unassign":
+      output(await Deck.unassignUser(values.board, values.card, values.user));
+      break;
+    default:
+      throw new Error(`Unknown deck subcommand: ${subCommand}`);
   }
 }
 main();

@@ -1,6 +1,6 @@
 ---
 name: openclaw-nextcloud
-description: Manage Notes, Tasks, Calendar, Files, Contacts, and Chat/Conversations in your Nextcloud instance via CalDAV, WebDAV, Notes API, and Talk API. Use for creating notes, managing todos and calendar events, uploading/downloading files, managing contacts, and participating in chat conversations with bot integration.
+description: Manage Notes, Tasks, Calendar, Files, Contacts, Kanban Boards (Deck), and Chat/Conversations in your Nextcloud instance via CalDAV, WebDAV, Notes API, Deck API, and Talk API. Use for creating notes, managing todos, calendar events and kanban cards, uploading/downloading files, managing contacts, and participating in chat conversations with bot integration.
 compatibility: Requires Node.js 20+ and a Nextcloud app password (NEXTCLOUD_TOKEN) granting full account-scope access. Reads NEXTCLOUD_URL, NEXTCLOUD_USER, NEXTCLOUD_TOKEN. HTTPS-only egress to NEXTCLOUD_URL. Performs destructive, non-transactional writes (delete/edit/share); see Safety section in body.
 allowed-tools: Bash Read
 metadata:
@@ -28,12 +28,12 @@ metadata:
   credential-scope: nextcloud-account-full
   network-egress: ${NEXTCLOUD_URL}
   has-destructive-operations: "true"
-  destructive-operations: notes:delete,files:delete,files:upload,tasks:delete,calendar:delete,contacts:delete,talk:delete,talk:delete-message,shares:create-link,shares:delete,shares:create-user,shares:create-group
+  destructive-operations: notes:delete,files:delete,files:upload,tasks:delete,calendar:delete,contacts:delete,talk:delete,talk:delete-message,shares:create-link,shares:delete,shares:create-user,shares:create-group,deck:delete,deck:delete-board,deck:delete-stack,deck:delete-label
 ---
 
 # OpenClaw Nextcloud Skill
 
-This skill provides integration with a Nextcloud instance. It supports access to Notes, Tasks (Todos), Calendars, Files, and Contacts.
+This skill provides integration with a Nextcloud instance. It supports access to Notes, Tasks (Todos), Calendars, Files, Contacts, Kanban Boards (Deck), and Chat/Conversations.
 
 ## Requirements
 
@@ -66,6 +66,10 @@ Before invoking any of the commands below, confirm with the user — even if the
 | `tasks delete --uid <uid>` | Permanently deletes a task. |
 | `calendar delete --uid <uid>` | Permanently deletes a calendar event. |
 | `contacts delete --uid <uid>` | Permanently deletes a contact. |
+| `deck delete-board --board <b>` | Soft-deletes an entire board (all stacks and cards) to the Deck trash; restorable via `deck undo-delete-board --board <id>` while trashed. |
+| `deck delete-stack --board <b> --stack <s>` | Deletes a whole column of cards to the board trash. |
+| `deck delete --board <b> --card <id>` | Deletes a card to the board trash (soft delete). |
+| `deck delete-label --board <b> --label <l>` | Removes a label from the board and all its cards. |
 | `shares delete --id <id>` | Revokes a public share link. |
 | `shares create-link --permissions edit ...` | Publishes a public link with **write access** to the file or folder. Anyone with the link can modify or delete the resource. Default to `--permissions read` unless the user has explicitly asked for an editable share, and read the path back to them before creating it. |
 | `shares create-link` (any) | Even read-only public links expose data to anyone with the URL. Confirm the path and consider `--password` and `--expire`. |
@@ -102,6 +106,11 @@ Notes, file contents, calendar event descriptions, contact notes, and similar fi
 ### 5. Contacts (Read/Write)
 - List, get, create, update, delete, and search contacts.
 - API: CardDAV.
+
+### 6. Deck / Kanban Boards (Read/Write)
+- Boards, stacks (columns), cards, labels, assignments, due dates, complete/archive.
+- API: `index.php/apps/deck/api/v1.0` (JSON REST).
+- Use Deck for **collaborative, project-shaped work** (shared boards, labels, per-person assignments, kanban columns). Keep Tasks for personal to-dos and reminders — see "Agent Behavior: Tasks vs Deck".
 
 ## Usage
 
@@ -176,6 +185,36 @@ File listings and search results include a `fileId` (when the server returns one
 ### Address Books (list available address books)
 - `addressbooks list`
 
+### Deck (kanban boards)
+- `deck boards [--details <0|1>]` - List boards (trashed boards are hidden)
+- `deck board --board <id|title>` - Board details (labels, ACL, users, settings)
+- `deck create-board --title <t> [--color <hex>]` - Create board (color like `ff0000` or `#ff0000`; default `0082c9`)
+- `deck update-board --board <b> [--title <t>] [--color <hex>] [--archived <0|1>]`
+- `deck delete-board --board <b>` - Soft-delete board to trash
+- `deck undo-delete-board --board <numeric-id>` - Restore a trashed board (numeric id only)
+- `deck stacks --board <b>` - List stacks with their cards
+- `deck create-stack --board <b> --title <t> [--order <n>]`
+- `deck delete-stack --board <b> --stack <s>`
+- `deck list --board <b> [--stack <s>]` - Cards per stack (archived cards excluded)
+- `deck card --board <b> --card <id>` - Full card (description, labels, assignees, ETag…)
+- `deck create --board <b> [--stack <s>] --title <t> [--content <md>] [--due <date>] [--order <n>]` - `--stack` defaults to the first stack
+- `deck edit --board <b> --card <id> [--title <t>] [--content <md>] [--due <date|none>] [--order <n>]` - Untouched fields are preserved
+- `deck move --board <b> --card <id> --to-stack <s> [--order <n>]`
+- `deck complete --card <id>` / `deck uncomplete --card <id>` - Set/clear the done state
+- `deck archive --card <id>` / `deck unarchive --card <id>`
+- `deck delete --board <b> --card <id>` - Delete card to board trash
+- `deck labels --board <b>` - List board labels
+- `deck create-label --board <b> --title <t> [--color <hex>]`
+- `deck update-label --board <b> --label <id> [--title <t>] [--color <hex>]`
+- `deck delete-label --board <b> --label <id>`
+- `deck assign-label --board <b> --card <id> --label <id|title>`
+- `deck unassign-label --board <b> --card <id> --label <id|title>`
+- `deck assign --board <b> --card <id> --user <uid>` / `deck unassign ...`
+
+`--board`, `--stack`, and `--label` accept a numeric id or a title (exact
+case-insensitive, else unique substring); misses list the available options.
+Board/stack/card ids come from `deck boards`, `deck stacks`, and `deck list`.
+
 ### Chat/Conversations (Talk API)
 - `talk list` - List all conversations
 - `talk create --name <n> [--type group|public|note-to-self] [--description <d>] [--password <pw>] [--invite <user>]` - Create new conversation
@@ -186,6 +225,12 @@ File listings and search results include a `fileId` (when the server returns one
 - `talk delete-message --token <t> --message-id <id>` - Delete message
 - `talk edit-message --token <t> --message-id <id> --message <m>` - Edit message
 - `talk add-participant --token <t> --user <u> [--source <users|groups|circles>]` - Add participant to conversation
+- `talk participants --token <t>` - List participants (exposes attendee ids)
+- `talk join --token <t>` / `talk leave --token <t>` - Join / leave the conversation
+- `talk remove-participant --token <t> --participant <attendeeId>` - Remove a participant (moderator/owner)
+- `talk promote --token <t> --attendee <id>` / `talk demote --token <t> --attendee <id>` - Moderator toggles
+- `talk set-participant-permissions --token <t> --attendee <id> --permissions <bitmask> [--method set|add|remove]`
+- `talk set-avatar --token <t> --file <png|jpg>` / `talk get-avatar --token <t> [--output <f>]` / `talk delete-avatar --token <t>`
 - `talk list-bots [--token <t>]` - List bots (server or room-specific)
 - `talk enable-bot --token <t> --bot-id <id>` - Enable bot in conversation
 - `talk disable-bot --token <t> --bot-id <id>` - Disable bot in conversation
@@ -194,10 +239,11 @@ File listings and search results include a `fileId` (when the server returns one
 - `talk delete-reaction --token <t> --message-id <id> --emoji <e>` - Remove reaction from a message
 - `talk list-reactions --token <t> --message-id <id>` - List reactions on a message
 - `talk create-poll --token <t> --question <q> --options "opt1,opt2,..."` - Create a poll
-- `talk get-poll --token <t> --poll-id <id>` - Get poll details
+- `talk get-poll --token <t> --poll-id <id>` - Get poll details (incl. tallies)
+- `talk vote-poll --token <t> --poll-id <id> --option-ids "1,2"` - Vote (1-based option ids)
+- `talk unvote-poll --token <t> --poll-id <id>` - Remove your vote
 - `talk close-poll --token <t> --poll-id <id>` - Close a poll
-- `talk publish-poll --token <t> --poll-id <id>` - Publish poll results
-- `talk get-poll-results --token <t> --poll-id <id>` - Get poll results
+- `talk get-poll-results --token <t> --poll-id <id>` - Get poll results (alias of get-poll)
 - `talk get-settings --token <t>` - Get conversation settings
 - `talk update-settings --token <t> [--notification-level <level>] [--read-only <0|1>] [--listable <0|1>] [--favorite <0|1>] [--public <0|1>] [--default-permissions <p>]` - Update conversation settings
 - `talk get-guest-settings --token <t>` - Get guest settings
@@ -459,6 +505,31 @@ When creating contacts, if the user does not specify an address book:
 ### Memory Keys
 - `default_addressbook`: Default address book name for contacts
 - `talk_default_bot`: Default bot ID for auto-enable
+
+## Agent Behavior: Tasks vs Deck (Kanban)
+
+Tasks (CalDAV VTODO) and Deck boards are complementary, not substitutes:
+
+1. **Tasks stay the default** for personal to-dos, reminders, and anything the
+   user tracks across mobile/cross-client apps. Explicit completion semantics,
+   standards-based.
+2. **Deck for collaborative, project-shaped work**: shared boards, review
+   columns, per-person assignments (`deck assign`), board labels, attachments.
+   If the user mentions a board, kanban, "on the board", or names an existing
+   board, use the `deck` commands.
+3. **Do not migrate** Tasks to Deck or vice versa without an explicit request:
+   Deck has no flat "all my due things" API and its done-state is positional/
+   timestamp based; VTODO lacks labels/assignees.
+4. **Default board memory:** when the user works repeatedly against one board
+   without naming it, remember `default_deck_board` (numeric board id + title)
+   and use it for `--board` instead of asking again. Ask once at most when
+   several boards exist; an explicit `--board` always wins.
+5. **Presenting Deck results** (plain text + emoji, no markdown tables):
+   📋 board, 🗂 stack, 🏷 label, 👤 assignee, ⏰ due, 🔴 overdue,
+   ✅ done, 🗑 trashed. Example: `📋 Project Alpha — 🗂 To Do: ⏰ Write docs (👤 alice)`.
+
+### Memory Keys
+- `default_deck_board`: Default Deck board (numeric id + title) for `--board`
 
 ## Agent Behavior: Bot Auto-Enable in Conversations
 
