@@ -1,5 +1,5 @@
 ---
-name: openclaw-nextcloud
+name: nextcloud-collab
 description: Manage Notes, Tasks, Calendar, Files, Contacts, Kanban Boards (Deck), and Chat/Conversations in your Nextcloud instance via CalDAV, WebDAV, Notes API, Deck API, and Talk API. Use for creating notes, managing todos, calendar events and kanban cards, uploading/downloading files, managing contacts, and participating in chat conversations with bot integration.
 compatibility: Requires Node.js 20+ and a Nextcloud app password (NEXTCLOUD_TOKEN) granting full account-scope access. Reads NEXTCLOUD_URL, NEXTCLOUD_USER, NEXTCLOUD_TOKEN. HTTPS-only egress to NEXTCLOUD_URL. Performs destructive, non-transactional writes (delete/edit/share); see Safety section in body.
 allowed-tools: Bash Read
